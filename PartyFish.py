@@ -7,7 +7,7 @@ import numpy as np
 from PIL import Image
 import threading  # For running the script in a separate thread
 import ctypes
-from pynput import keyboard
+from pynput import keyboard, mouse  # 用于监听键盘和鼠标事件，支持热键和鼠标侧键操作 
 import datetime
 import re
 
@@ -49,9 +49,281 @@ record_fish_enabled = True  # 默认启用钓鱼记录
 legendary_screenshot_enabled = True # 默认关闭传说/传奇鱼自动截屏
 
 # =========================
+# 字体大小设置
+# =========================
+font_size = 100  # 默认字体大小为100%
+preset_btns = []  # 保存预设按钮引用，用于后续字体更新
+input_entries = []  # 保存所有输入框引用，用于后续字体更新
+combo_boxes = []  # 保存所有组合框引用，用于后续字体更新
+fish_tree_ref = None  # 保存钓鱼记录Treeview引用，用于动态调整列宽
+
+# =========================
 # 参数文件路径
 # =========================
 PARAMETER_FILE = "./parameters.json"
+# =========================
+# 初始化字体样式
+# =========================
+def init_font_styles(style, font_size_percent):
+    """初始化所有字体样式
+    
+    Args:
+        style: ttkbootstrap.Style对象
+        font_size_percent: 字体大小百分比（50-200）
+    """
+    # 缩放因子
+    scale_factor = font_size_percent / 100.0
+    
+    # 基础字体设置
+    base_font = "Segoe UI"
+    
+    # 定义不同控件的字体大小
+    font_sizes = {
+        "Title": int(14 * scale_factor),  # 标题字体大小
+        "Subtitle": int(8 * scale_factor),  # 副标题字体大小
+        "Label": int(9 * scale_factor),  # 普通标签字体大小
+        "Entry": int(9 * scale_factor),  # 输入框字体大小
+        "Button": int(9 * scale_factor),  # 按钮字体大小
+        "Treeview": int(9 * scale_factor),  # 树视图字体大小
+        "Combobox": int(9 * scale_factor),  # 组合框字体大小
+        "Small": int(7 * scale_factor),  # 小号字体大小
+        "Stats": int(10 * scale_factor),  # 统计信息字体大小
+        "StatsTotal": int(11 * scale_factor),  # 总计统计字体大小
+    }
+    
+    # 确保字体大小在合理范围内
+    for key in font_sizes:
+        font_sizes[key] = max(5, min(30, font_sizes[key]))
+    
+    # 更新各种控件的字体样式
+    try:
+        # 1. 更新标签样式
+        label_font = (base_font, font_sizes["Label"])
+        label_styles = [
+            "TLabel",
+            "TLabelframe.Label",
+            "Status.TLabel",
+            "Stats.TLabel"
+        ]
+        for style_name in label_styles:
+            style.configure(style_name, font=label_font)
+        
+        # 2. 更新输入框样式
+        entry_font = (base_font, font_sizes["Entry"])
+        entry_styles = ["TEntry", "Entry"]
+        for style_name in entry_styles:
+            style.configure(style_name, font=entry_font)
+        
+        # 3. 更新组合框样式（包括下拉列表）
+        combobox_font = (base_font, font_sizes["Combobox"])
+        combobox_styles = [
+            "TCombobox",
+            "Combobox",
+            "TCombobox.Listbox",
+            "Combobox.Listbox"
+        ]
+        for style_name in combobox_styles:
+            style.configure(style_name, font=combobox_font)
+        
+        # 4. 更新复选框样式
+        style.configure("TCheckbutton", font=label_font)
+        
+        # 5. 更新树视图样式
+        treeview_font = (base_font, font_sizes["Treeview"])
+        treeview_rowheight = int(font_sizes["Treeview"] * 2.2)
+        treeview_styles = [
+            ("Treeview", treeview_font, treeview_rowheight),
+            ("CustomTreeview.Treeview", treeview_font, treeview_rowheight)
+        ]
+        for style_name, font, rowheight in treeview_styles:
+            style.configure(style_name, font=font, rowheight=rowheight)
+            style.configure(f"{style_name}.Heading", font=(base_font, font_sizes["Label"], "bold"))
+        
+        # 6. 更新滑块样式
+        scale_styles = ["Horizontal.TScale", "Vertical.TScale"]
+        for style_name in scale_styles:
+            style.configure(style_name, font=label_font)
+        
+        # 7. 更新单选按钮样式
+        radiobutton_styles = {
+            "TRadiobutton": label_font,
+            "Toolbutton.TRadiobutton": label_font,
+            "InfoOutline.TRadiobutton": label_font,
+            "SuccessOutline.TRadiobutton": label_font,
+            "DangerOutline.TRadiobutton": label_font,
+            "InfoOutline.Toolbutton.TRadiobutton": label_font,
+            "SuccessOutline.Toolbutton.TRadiobutton": label_font,
+            "DangerOutline.Toolbutton.TRadiobutton": label_font,
+            "WarningOutline.Toolbutton.TRadiobutton": label_font,
+            "SecondaryOutline.Toolbutton.TRadiobutton": label_font
+        }
+        for style_name, font in radiobutton_styles.items():
+            style.configure(style_name, font=font)
+        
+        # 8. 更新按钮样式
+        button_font = (base_font, font_sizes["Button"])
+        
+        # 基础按钮样式
+        base_button_styles = [
+            "TButton",
+            "Button",
+            "Toolbutton",
+            "Outline.TButton",
+            "Toolbutton.TButton",
+            "Outline.Toolbutton.TButton"
+        ]
+        for style_name in base_button_styles:
+            style.configure(style_name, font=button_font)
+        
+        # 特定按钮样式变体
+        specific_button_styles = [
+            "InfoOutline.TButton",
+            "SuccessOutline.TButton",
+            "DangerOutline.TButton",
+            "WarningOutline.TButton",
+            "SecondaryOutline.TButton",
+            "InfoOutline.Toolbutton.TButton",
+            "SuccessOutline.Toolbutton.TButton",
+            "DangerOutline.Toolbutton.TButton",
+            "WarningOutline.Toolbutton.TButton",
+            "SecondaryOutline.Toolbutton.TButton",
+            "SuccessOutline.Toolbutton",
+            "DangerOutline.Toolbutton",
+            "InfoOutline.Toolbutton",
+            "WarningOutline.Toolbutton",
+            "SecondaryOutline.Toolbutton"
+        ]
+        for style_name in specific_button_styles:
+            style.configure(style_name, font=button_font)
+        
+        # 颜色变体按钮样式
+        color_variants = ["Primary", "Secondary", "Success", "Info", "Warning", "Danger", "Light", "Dark"]
+        color_button_templates = [
+            f"{{}}.TButton",
+            f"{{}}Outline.TButton",
+            f"{{}}.Toolbutton.TButton",
+            f"{{}}Outline.Toolbutton.TButton"
+        ]
+        bootstyle_templates = [
+            f"{{}}-toolbutton",
+            f"{{}}-outline-toolbutton"
+        ]
+        
+        for color in color_variants:
+            # 颜色按钮样式
+            for template in color_button_templates:
+                style_name = template.format(color)
+                style.configure(style_name, font=button_font)
+            
+            # 直接使用bootstyle名称作为样式
+            for template in bootstyle_templates:
+                style_name = template.format(color.lower())
+                style.configure(style_name, font=button_font)
+    except Exception as e:
+        print(f"Error initializing font styles: {e}")
+
+# =========================
+# 更新所有控件的字体
+# =========================
+def update_all_widget_fonts(widget, style, font_size_percent):
+    """更新所有控件的字体大小
+    
+    Args:
+        widget: 根控件
+        style: ttkbootstrap.Style对象
+        font_size_percent: 字体大小百分比（50-200）
+    """
+    # 初始化字体样式 - 这会更新所有控件的样式字体
+    init_font_styles(style, font_size_percent)
+    
+    # 缩放因子
+    scale_factor = font_size_percent / 100.0
+    base_font = "Segoe UI"
+    
+    # 定义默认字体大小
+    default_sizes = {
+        "Label": 9,
+        "Button": 9,
+        "Entry": 9,
+        "Combobox": 9,
+        "Radiobutton": 9,
+        "Checkbutton": 9,
+        "Treeview": 9,
+    }
+    
+    # 递归更新所有控件的字体
+    def update_widget_font(w):
+        try:
+            widget_type = type(w).__name__
+            
+            # 确定默认字体大小
+            if widget_type in ["Label", "TLabel", "TTKLabel"] or "Label" in widget_type:
+                default_size = default_sizes["Label"]
+            elif widget_type in ["Button", "TButton", "TTKButton"] or "Button" in widget_type:
+                default_size = default_sizes["Button"]
+            elif widget_type in ["Entry", "TEntry", "TTKEntry"] or "Entry" in widget_type:
+                default_size = default_sizes["Entry"]
+            elif widget_type in ["Combobox", "TCombobox", "TTKCombobox"] or "Combobox" in widget_type:
+                default_size = default_sizes["Combobox"]
+            elif widget_type in ["Radiobutton", "TRadiobutton", "TTKRadiobutton"] or "Radiobutton" in widget_type:
+                default_size = default_sizes["Radiobutton"]
+            elif widget_type in ["Checkbutton", "TCheckbutton", "TTKCheckbutton"] or "Checkbutton" in widget_type:
+                default_size = default_sizes["Checkbutton"]
+            elif widget_type in ["Treeview", "TTKTreeview"] or "Treeview" in widget_type:
+                default_size = default_sizes["Treeview"]
+            elif widget_type in ["Frame", "TFrame", "TTKFrame"] or "Frame" in widget_type:
+                # 跳过框架，只处理其内部控件
+                pass
+            else:
+                # 对于其他控件类型，尝试将其作为按钮处理，特别是ttkbootstrap按钮
+                # 检查控件是否有configure方法，尝试获取其样式
+                try:
+                    style_name = w.cget("style")
+                    if "Button" in style_name or "Toolbutton" in style_name:
+                        default_size = default_sizes["Button"]
+                    else:
+                        return  # 跳过不支持字体的控件
+                except:
+                    return  # 跳过不支持字体的控件
+            
+            # 计算新字体大小
+            new_size = int(default_size * scale_factor)
+            new_size = max(5, min(30, new_size))
+            
+            # 构建新字体
+            new_font = (base_font, new_size)
+            
+            # 特殊处理标题和粗体文本
+            try:
+                if widget_type == "Label" and ("PartyFish" in str(w.cget("text")) or "标题" in str(w.cget("text"))):
+                    new_font = (base_font, int(14 * scale_factor), "bold")
+                elif widget_type == "Label" and "统计" in str(w.cget("text")):
+                    new_font = (base_font, int(10 * scale_factor), "bold")
+            except:
+                pass
+            
+            # 尝试直接更新控件字体，如果失败则跳过
+            try:
+                w.configure(font=new_font)
+            except Exception as e:
+                # 对于ttkbootstrap按钮，可能无法直接设置字体，需要通过样式更新
+                # 这已经在init_font_styles中处理了，所以这里可以安全跳过
+                pass
+            
+        except Exception as e:
+            # 跳过不支持字体的控件
+            pass
+        
+        # 递归处理子控件
+        for child in w.winfo_children():
+            update_widget_font(child)
+    
+    # 开始递归更新
+    update_widget_font(widget)
+    
+    # 重新配置所有已创建的控件，应用新的样式设置
+    widget.update_idletasks()
+
 # =========================
 # 加载和保存参数
 # =========================
@@ -69,6 +341,7 @@ def save_parameters():
         "hotkey": hotkey_name,  # 保存热键设置（如 "Ctrl+Shift+A" 或 "F2"）
         "record_fish_enabled": record_fish_enabled,  # 保存钓鱼记录开关状态
         "legendary_screenshot_enabled": legendary_screenshot_enabled,  # 保存传说/传奇鱼自动截屏开关状态
+        "font_size": font_size,  # 保存字体大小设置
     }
     try:
         with open(PARAMETER_FILE, "w") as f:
@@ -81,6 +354,7 @@ def load_parameters():
     global t, leftclickdown, leftclickup, times, paogantime, jiashi_var
     global resolution_choice, TARGET_WIDTH, TARGET_HEIGHT, SCALE_X, SCALE_Y
     global hotkey_name, hotkey_modifiers, hotkey_main_key
+    global font_size
     try:
             with open(PARAMETER_FILE, "r") as f:
                 params = json.load(f)
@@ -97,6 +371,8 @@ def load_parameters():
                 # 加载传说/传奇鱼自动截屏开关状态
                 global legendary_screenshot_enabled
                 legendary_screenshot_enabled = params.get("legendary_screenshot_enabled", True)
+                # 加载字体大小设置
+                font_size = params.get("font_size", 100)  # 默认100%
                 # 加载热键设置（新格式支持组合键）
                 saved_hotkey = params.get("hotkey", "F2")
                 try:
@@ -181,8 +457,21 @@ def update_parameters(t_var, leftclickdown_var, leftclickup_var, times_var, paog
             elif resolution_choice == "4K":
                 TARGET_WIDTH, TARGET_HEIGHT = 3840, 2160
             elif resolution_choice == "自定义":
-                TARGET_WIDTH = int(custom_width_var.get())
-                TARGET_HEIGHT = int(custom_height_var.get())
+                # 自定义分辨率限制
+                min_width, max_width = 800, 7680
+                min_height, max_height = 600, 4320
+                
+                # 获取输入值
+                width = int(custom_width_var.get())
+                height = int(custom_height_var.get())
+                
+                # 应用限制
+                TARGET_WIDTH = max(min_width, min(max_width, width))
+                TARGET_HEIGHT = max(min_height, min(max_height, height))
+                
+                # 更新输入框显示，确保用户看到实际应用的值
+                custom_width_var.set(str(TARGET_WIDTH))
+                custom_height_var.set(str(TARGET_HEIGHT))
 
             # 重新计算缩放比例
             SCALE_X = TARGET_WIDTH / BASE_WIDTH
@@ -216,14 +505,23 @@ def create_gui():
     # 创建现代化主题窗口
     root = ttkb.Window(themename="darkly")  # 使用深色主题
     root.title("🎣 PartyFish 自动钓鱼助手")
-    root.geometry("1109x800")  # 增大初始高度，确保所有信息完整显示
-    root.minsize(600, 400)    # 减小最小尺寸限制，允许更灵活的缩放
-    root.maxsize(1200, 900)    # 增大最大尺寸限制，避免窗口过大
+    root.geometry("1110x855")  # 增大初始高度，确保所有信息完整显示
+    root.minsize(700, 500)    # 调整最小尺寸，提供更好的初始体验
+    root.maxsize(2560, 1440)   # 调整最大尺寸，支持更大的显示器
     root.resizable(True, True)  # 允许调整大小
 
     # 设置窗口图标（如果有的话）
     try:
-        root.iconbitmap("icon.ico")
+        import sys
+        import os
+        # 处理PyInstaller打包后的资源路径
+        if hasattr(sys, '_MEIPASS'):
+            # 打包后使用_internal目录
+            icon_path = os.path.join(sys._MEIPASS, "666.ico")
+        else:
+            # 开发环境使用当前目录
+            icon_path = "666.ico"
+        root.iconbitmap(icon_path)
     except:
         pass
 
@@ -239,15 +537,24 @@ def create_gui():
     # ==================== 左侧面板（设置区域） ====================
     left_panel = ttkb.Frame(main_frame)
     left_panel.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
-
-    # ==================== 标题区域 ====================
+    
+    # ==================== 垂直滚动条 ====================
+    # 先添加垂直滚动条，确保它从顶部到底部，和左侧面板一样长
+    left_scrollbar = ttkb.Scrollbar(
+        left_panel,
+        orient="vertical",
+        bootstyle="info"
+    )
+    left_scrollbar.pack(side=RIGHT, fill=Y)
+    
+    # ==================== 固定标题区域 ====================
+    # 标题区域固定，不随滚动条滚动
     title_frame = ttkb.Frame(left_panel)
     title_frame.pack(fill=X, pady=(0, 5))
 
     title_label = ttkb.Label(
         title_frame,
         text="🎣 PartyFish",
-        font=("Segoe UI", 14, "bold"),
         bootstyle="light"
     )
     title_label.pack()
@@ -255,14 +562,99 @@ def create_gui():
     subtitle_label = ttkb.Label(
         title_frame,
         text="自动钓鱼参数配置",
-        font=("Segoe UI", 8),
         bootstyle="light"
     )
     subtitle_label.pack()
+    
+    # 添加分隔线
+    separator = ttkb.Separator(left_panel, bootstyle="secondary")
+    separator.pack(fill=X, pady=(0, 5))
+    
+    # ==================== 可滚动内容区域 ====================
+    # 创建滚动容器，用于放置可滚动的内容
+    scrollable_content_frame = ttkb.Frame(left_panel)
+    scrollable_content_frame.pack(fill=BOTH, expand=YES, pady=(0, 0))
+    
+    # 创建Canvas作为滚动区域
+    left_canvas = tk.Canvas(
+        scrollable_content_frame,
+        yscrollcommand=left_scrollbar.set,
+        background="#212529",  # 深色主题背景色，与ttkbootstrap darkly主题匹配
+        highlightthickness=0,  # 去除Canvas的高亮边框
+        relief="flat"  # 平边框样式
+    )
+    left_canvas.pack(side=LEFT, fill=BOTH, expand=YES)
+    
+    # 配置滚动条与Canvas关联，使用标准的yview方法，它可以正确处理所有滚动条事件
+    left_scrollbar.config(command=left_canvas.yview)
+    
+    # 创建内部框架，用于放置所有可滚动的左侧面板内容
+    # 设置与Canvas相同的背景色，避免滚动时出现拖影
+    left_content_frame = ttkb.Frame(left_canvas, bootstyle="dark")
+    
+    # 保存canvas window的ID，用于后续调整宽度
+    canvas_window = left_canvas.create_window((0, 0), window=left_content_frame, anchor="nw", tags="content_window")
+    
+    # 优化滚动性能，减少拖影
+    def smooth_scroll(event):
+        # 使用更平滑的滚动增量
+        left_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        # 强制Canvas重绘，避免拖影
+        left_canvas.update_idletasks()
+    
+    # 修复鼠标滚轮绑定，确保所有组件都能响应鼠标滚轮
+    # 先解绑所有现有的鼠标滚轮绑定，避免冲突
+    left_canvas.unbind("<MouseWheel>")
+    left_content_frame.unbind("<MouseWheel>")
+    
+    # 绑定鼠标滚轮事件到Canvas和内容框架
+    left_canvas.bind("<MouseWheel>", smooth_scroll)
+    left_content_frame.bind("<MouseWheel>", smooth_scroll)
+    
+    # 为内容框架中的所有子组件绑定鼠标滚轮事件
+    # 定义一个递归函数，为所有子组件绑定事件
+    def bind_mousewheel_recursively(widget):
+        # 跳过已经绑定过的组件，避免重复绑定
+        if hasattr(widget, '_mousewheel_bound') and widget._mousewheel_bound:
+            return
+        
+        # 绑定鼠标滚轮事件
+        widget.bind("<MouseWheel>", smooth_scroll)
+        widget._mousewheel_bound = True
+        
+        # 递归绑定所有子组件
+        for child in widget.winfo_children():
+            bind_mousewheel_recursively(child)
+    
+    # 绑定内容框架的子组件
+    bind_mousewheel_recursively(left_content_frame)
+    
+    # 为新添加的组件自动绑定鼠标滚轮事件
+    def on_content_frame_child_added(event):
+        bind_mousewheel_recursively(event.widget)
+    
+    left_content_frame.bind("<Map>", on_content_frame_child_added)
+    
+    # 绑定canvas的Configure事件，确保内容框架宽度与canvas一致
+    def on_canvas_configure(event):
+        # 调整canvas的宽度，确保内容框架与canvas宽度一致
+        left_canvas.itemconfig(canvas_window, width=event.width)
+    
+    left_canvas.bind("<Configure>", on_canvas_configure)
+    
+    # 更新滚动区域大小
+    def update_scroll_region(event):
+        # 强制更新布局
+        left_content_frame.update_idletasks()
+        # 设置滚动区域，确保包含整个内容
+        left_canvas.config(scrollregion=left_canvas.bbox("all"))
+    
+    # 绑定内容框架的Configure事件，更新滚动区域
+    left_content_frame.bind("<Configure>", update_scroll_region)
 
     # ==================== 钓鱼参数卡片 ====================
     params_card = ttkb.Labelframe(
-        left_panel,
+        left_content_frame,
         text=" ⚙️ 钓鱼参数 ",
         padding=8,
         bootstyle="info"
@@ -271,11 +663,15 @@ def create_gui():
 
     # 参数输入样式
     def create_param_row(parent, label_text, var, row, tooltip=""):
-        label = ttkb.Label(parent, text=label_text, font=("Segoe UI", 9))
+        label = ttkb.Label(parent, text=label_text)
         label.grid(row=row, column=0, sticky=W, pady=3, padx=(0, 8))
 
-        entry = ttkb.Entry(parent, textvariable=var, width=10, font=("Segoe UI", 9))
+        entry = ttkb.Entry(parent, textvariable=var, width=10)
         entry.grid(row=row, column=1, sticky=E, pady=3)
+        
+        # 保存输入框引用到全局列表
+        input_entries.append(entry)
+        
         return entry
 
     # 循环间隔
@@ -304,7 +700,7 @@ def create_gui():
 
     # ==================== 加时选项卡片 ====================
     jiashi_card = ttkb.Labelframe(
-        left_panel,
+        left_content_frame,
         text=" ⏱️ 加时选项 ",
         padding=8,
         bootstyle="warning"
@@ -316,7 +712,7 @@ def create_gui():
     jiashi_frame = ttkb.Frame(jiashi_card)
     jiashi_frame.pack(fill=X)
 
-    jiashi_label = ttkb.Label(jiashi_frame, text="是否自动加时", font=("Segoe UI", 9))
+    jiashi_label = ttkb.Label(jiashi_frame, text="是否自动加时")
     jiashi_label.pack(side=LEFT)
 
     jiashi_btn_frame = ttkb.Frame(jiashi_frame)
@@ -342,7 +738,7 @@ def create_gui():
 
     # ==================== 热键设置卡片 ====================
     hotkey_card = ttkb.Labelframe(
-        left_panel,
+        left_content_frame,
         text=" ⌨️ 热键设置 ",
         padding=8,
         bootstyle="secondary"
@@ -362,7 +758,7 @@ def create_gui():
     hotkey_frame = ttkb.Frame(hotkey_card)
     hotkey_frame.pack(fill=X)
 
-    hotkey_label = ttkb.Label(hotkey_frame, text="启动/暂停热键", font=("Segoe UI", 9))
+    hotkey_label = ttkb.Label(hotkey_frame, text="启动/暂停热键")
     hotkey_label.pack(side=LEFT)
 
     # 热键显示按钮（点击后进入捕获模式）
@@ -378,7 +774,6 @@ def create_gui():
     hotkey_info_label = ttkb.Label(
         hotkey_card,
         text=f"按 {hotkey_name} 启动/暂停 | 点击按钮修改",
-        font=("Segoe UI", 7),
         bootstyle="info"
     )
     hotkey_info_label.pack(pady=(3, 0))
@@ -387,19 +782,28 @@ def create_gui():
     hotkey_tip_label = ttkb.Label(
         hotkey_card,
         text="",
-        font=("Segoe UI", 7),
         bootstyle="secondary"
     )
 
     def stop_hotkey_capture():
         """停止热键捕获"""
         is_capturing_hotkey[0] = False
+        # 停止键盘监听器
         if capture_listener[0] is not None:
             try:
                 capture_listener[0].stop()
             except:
                 pass
             capture_listener[0] = None
+        # 停止鼠标监听器
+        if 'mouse_capture_listener' in globals():
+            mouse_listener = globals()['mouse_capture_listener']
+            if mouse_listener is not None:
+                try:
+                    mouse_listener.stop()
+                except:
+                    pass
+            globals()['mouse_capture_listener'] = None
         hotkey_btn.configure(bootstyle="info-outline")
         hotkey_tip_label.pack_forget()  # 隐藏提示
         hotkey_info_label.configure(text=f"按 {hotkey_var.get()} 启动/暂停 | 点击按钮修改")
@@ -450,6 +854,31 @@ def create_gui():
             captured_modifiers[0].discard(MODIFIER_KEYS[key])
         return True
 
+    def on_capture_mouse_click(x, y, button, pressed):
+        """捕获鼠标点击事件"""
+        if not is_capturing_hotkey[0] or not pressed:
+            return
+        
+        # 只允许鼠标侧键（x1, x2），禁用左右中键
+        if button not in [mouse.Button.x1, mouse.Button.x2]:
+            return
+        
+        # 鼠标侧键作为主按键
+        captured_main_key[0] = button
+        captured_main_key_name[0] = key_to_name(button)
+        
+        # 生成热键字符串
+        new_hotkey = format_hotkey_display(captured_modifiers[0], captured_main_key_name[0])
+        
+        # 更新GUI
+        def update_gui():
+            hotkey_var.set(new_hotkey)
+            hotkey_btn.configure(text=new_hotkey)
+            hotkey_info_label.configure(text=f"新热键: {new_hotkey} | 点击保存生效")
+            stop_hotkey_capture()
+        
+        root.after(0, update_gui)
+
     def start_hotkey_capture():
         """开始热键捕获"""
         if is_capturing_hotkey[0]:
@@ -462,16 +891,22 @@ def create_gui():
         captured_main_key_name[0] = ""
 
         hotkey_btn.configure(text="请按键...", bootstyle="warning")
-        hotkey_info_label.configure(text="按下组合键（如Ctrl+F2）或单键")
+        hotkey_info_label.configure(text="按下组合键（如Ctrl+F2）或单键/鼠标侧键")
         hotkey_tip_label.configure(text="5秒内按键，或再次点击取消")
         hotkey_tip_label.pack(pady=(2, 0))  # 显示提示
 
-        # 启动临时监听器
+        # 启动键盘监听器
         capture_listener[0] = keyboard.Listener(
             on_press=on_capture_key_press,
             on_release=on_capture_key_release
         )
         capture_listener[0].start()
+        
+        # 启动鼠标监听器
+        global mouse_capture_listener
+        mouse_capture_listener = mouse.Listener(on_click=on_capture_mouse_click)
+        mouse_capture_listener.daemon = True
+        mouse_capture_listener.start()
 
         # 5秒后自动取消
         def auto_cancel():
@@ -484,7 +919,7 @@ def create_gui():
 
     # ==================== 分辨率设置卡片 ====================
     resolution_card = ttkb.Labelframe(
-        left_panel,
+        left_content_frame,
         text=" 🖥️ 分辨率设置 ",
         padding=8,
         bootstyle="success"
@@ -504,16 +939,16 @@ def create_gui():
     # 自定义分辨率输入框容器
     custom_frame = ttkb.Frame(resolution_card)
 
-    custom_width_label = ttkb.Label(custom_frame, text="宽:", font=("Segoe UI", 9))
+    custom_width_label = ttkb.Label(custom_frame, text="宽:")
     custom_width_label.pack(side=LEFT, padx=(0, 3))
 
-    custom_width_entry = ttkb.Entry(custom_frame, textvariable=custom_width_var, width=6, font=("Segoe UI", 9))
+    custom_width_entry = ttkb.Entry(custom_frame, textvariable=custom_width_var, width=6)
     custom_width_entry.pack(side=LEFT, padx=(0, 10))
 
-    custom_height_label = ttkb.Label(custom_frame, text="高:", font=("Segoe UI", 9))
+    custom_height_label = ttkb.Label(custom_frame, text="高:")
     custom_height_label.pack(side=LEFT, padx=(0, 3))
 
-    custom_height_entry = ttkb.Entry(custom_frame, textvariable=custom_height_var, width=6, font=("Segoe UI", 9))
+    custom_height_entry = ttkb.Entry(custom_frame, textvariable=custom_height_var, width=6)
     custom_height_entry.pack(side=LEFT)
 
     # 当前分辨率信息标签
@@ -521,7 +956,6 @@ def create_gui():
     info_label = ttkb.Label(
         resolution_card,
         textvariable=resolution_info_var,
-        font=("Segoe UI", 8),
         bootstyle="info"
     )
 
@@ -543,8 +977,8 @@ def create_gui():
         info_label.pack_forget()
 
         if resolution_var.get() == "自定义":
-            # 显示自定义输入框
-            custom_frame.pack(fill=X, pady=(5, 0))
+            # 显示自定义输入框 - 居中显示
+            custom_frame.pack(anchor="center", pady=(5, 0))
         else:
             # 根据选择更新显示值
             if resolution_var.get() == "1080P":
@@ -579,12 +1013,12 @@ def create_gui():
 
     # 初始化显示状态
     if resolution_choice == "自定义":
-        custom_frame.pack(fill=X, pady=(5, 0))
+        custom_frame.pack(anchor="center", pady=(5, 0))
     info_label.pack(pady=(8, 0))
 
     # ==================== 钓鱼记录开关卡片 ====================
     record_card = ttkb.Labelframe(
-        left_panel,
+        left_content_frame,
         text=" 📝 钓鱼记录设置 ",
         padding=8,
         bootstyle="info"
@@ -597,7 +1031,7 @@ def create_gui():
     record_frame = ttkb.Frame(record_card)
     record_frame.pack(fill=X)
 
-    record_label = ttkb.Label(record_frame, text="是否启用钓鱼记录", font=("Segoe UI", 9))
+    record_label = ttkb.Label(record_frame, text="是否启用钓鱼记录")
     record_label.pack(side=LEFT)
 
     record_btn_frame = ttkb.Frame(record_frame)
@@ -627,7 +1061,7 @@ def create_gui():
     legendary_frame = ttkb.Frame(record_card)
     legendary_frame.pack(fill=X, pady=(5, 0))
     
-    legendary_label = ttkb.Label(legendary_frame, text="传说/传奇鱼自动截屏", font=("Segoe UI", 9))
+    legendary_label = ttkb.Label(legendary_frame, text="传说/传奇鱼自动截屏")
     legendary_label.pack(side=LEFT)
     
     legendary_btn_frame = ttkb.Frame(legendary_frame)
@@ -651,9 +1085,254 @@ def create_gui():
     )
     legendary_no.pack(side=LEFT, padx=5)
 
+    # ==================== 字体大小设置卡片 ====================
+    font_size_card = ttkb.Labelframe(
+        left_content_frame,
+        text=" 📝 字体大小设置 ",
+        padding=8,
+        bootstyle="info"
+    )
+    font_size_card.pack(fill=X, pady=(0, 4))
+
+    # 字体大小变量
+    font_size_var = ttkb.IntVar(value=font_size)
+
+    # 字体大小滑块 - 优化样式
+    font_slider = ttkb.Scale(
+        font_size_card,
+        from_=50,
+        to=200,
+        orient="horizontal",
+        variable=font_size_var,
+        bootstyle="info",  # 使用标准样式
+        length=220,  # 增加滑块长度
+        cursor="hand2"  # 鼠标悬停时显示手型光标
+    )
+    font_slider.pack(pady=(8, 5))
+
+    # 字体大小显示标签 - 美化显示
+    font_size_display = ttkb.Label(
+        font_size_card,
+        text=f"当前字体大小: {font_size}%",
+        bootstyle="primary",  # 使用更醒目的样式
+        font=("Segoe UI", 10, "bold")  # 加粗字体
+    )
+    font_size_display.pack(pady=(0, 8))
+
+    # 预设按钮框架 - 使用两行布局
+    preset_frame = ttkb.Frame(font_size_card)
+    preset_frame.pack(fill=X, pady=(0, 4))
+    
+    # 第一行预设按钮框架
+    preset_row1 = ttkb.Frame(preset_frame)
+    preset_row1.pack(fill=X)
+    
+    # 第二行预设按钮框架
+    preset_row2 = ttkb.Frame(preset_frame)
+    preset_row2.pack(fill=X)
+
+    # 字体大小预设配置 - 简化文本，适合大字体显示
+    font_presets = [
+        ("小 (50%)", 50),    # 50% 字体大小
+        ("中 (100%)", 100),   # 100% 字体大小
+        ("大 (150%)", 150),   # 150% 字体大小
+        ("特大 (200%)", 200)   # 200% 字体大小
+    ]
+    
+    # 保存预设按钮引用的字典，用于更新选中状态
+    preset_button_dict = {}
+    
+    # 预设按钮点击处理
+    def set_font_size(value):
+        font_size_var.set(value)
+        update_font_size()
+        # 更新预设按钮的选中状态
+        update_preset_button_state()
+    
+    # 更新预设按钮状态
+    def update_preset_button_state():
+        current_size = font_size_var.get()
+        for text, size in font_presets:
+            btn = preset_button_dict[size]
+            if size == current_size:
+                # 当前选中的预设，使用填充样式
+                btn.configure(bootstyle="info")
+            else:
+                # 未选中的预设，使用轮廓样式
+                btn.configure(bootstyle="info-outline")
+    
+    # 创建预设按钮，两行布局
+    for i, (text, size) in enumerate(font_presets):
+        # 选择按钮所在的行
+        current_row = preset_row1 if i < 2 else preset_row2
+        
+        preset_btn = ttkb.Button(
+            current_row,
+            text=text,
+            command=lambda v=size: set_font_size(v),
+            bootstyle="info-outline",  # 默认轮廓样式
+            width=10,  # 减小按钮宽度，适应大字体
+            padding=(3, 2),  # 优化内边距，更紧凑
+            cursor="hand2"  # 鼠标悬停时显示手型光标
+        )
+        # 每行两个按钮，各占50%宽度
+        preset_btn.pack(side=LEFT, padx=2, pady=2, expand=True, fill=X)
+        
+        # 保存按钮引用
+        preset_button_dict[size] = preset_btn
+        preset_btns.append(preset_btn)
+    
+    # 初始化预设按钮状态
+    update_preset_button_state()
+
+    # 字体大小应用按钮
+    apply_font_btn = ttkb.Button(
+        font_size_card,
+        text="应用",
+        command=lambda: update_font_size(),
+        bootstyle="success-outline"
+    )
+    apply_font_btn.pack(fill=X, pady=(5, 0))
+
+    # 定义字体大小更新函数
+    def update_font_size():
+        global font_size
+        font_size = font_size_var.get()
+        font_size_display.config(text=f"当前字体大小: {font_size}%")
+        # 保存字体大小到参数文件
+        save_parameters()
+        
+        # 更新预设按钮状态，确保滑块和按钮状态一致
+        update_preset_button_state()
+        
+        # 计算新字体大小和缩放因子
+        scale_factor = font_size / 100.0
+        base_font = "Segoe UI"
+        entry_font_size = max(5, min(30, int(9 * scale_factor)))
+        new_font = (base_font, entry_font_size)
+        
+        # 直接更新所有输入框的字体
+        for entry in input_entries:
+            try:
+                # 尝试直接更新字体
+                entry.configure(font=new_font)
+            except Exception as e:
+                # 如果直接更新失败，确保样式已经更新
+                # 通过修改样式对象来更新所有输入框
+                style.configure("TEntry", font=new_font)
+                style.configure("Entry", font=new_font)
+        
+        # 直接更新所有组合框的字体和宽度（包括品质筛选组合框）
+        for i, combo in enumerate(combo_boxes):
+            try:
+                # 尝试直接更新字体
+                combo.configure(font=new_font)
+                
+                # 计算新的组合框宽度，根据字体大小动态调整
+                # 基础宽度为8，根据缩放因子调整
+                base_combo_width = 8
+                new_combo_width = max(6, int(base_combo_width * scale_factor))
+                combo.configure(width=new_combo_width)
+            except Exception as e:
+                # 如果直接更新失败，确保样式已经更新
+                # 通过修改样式对象来更新所有组合框
+                style.configure("TCombobox", font=new_font)
+                style.configure("Combobox", font=new_font)
+                # 更新组合框下拉列表的字体（同时支持标准TTK和TTKBootstrap）
+                style.configure("TCombobox.Listbox", font=new_font)
+                style.configure("Combobox.Listbox", font=new_font)
+        
+        # 应用字体大小到所有界面元素
+        update_all_widget_fonts(root, style, font_size)
+        
+        # 动态调整Treeview列宽，根据字体大小缩放
+        if fish_tree_ref:
+            try:
+                # 计算新的字体大小（像素单位）
+                # 确保字体大小按照要求计算：
+                # - 100% 时为 12px
+                # - 150% 时为 18px
+                # - 200% 时为 24px
+                base_font_size = 12  # 基础字体大小为12px（100%时）
+                new_font_size = int(base_font_size * scale_factor)
+                
+                # 精确调整字体大小，确保符合要求
+                if font_size == 100:
+                    new_font_size = 12
+                elif font_size == 150:
+                    new_font_size = 18
+                elif font_size == 200:
+                    new_font_size = 24
+                
+                # print(f"字体大小设置: {font_size}%, 使用的字体大小: {new_font_size}px")
+                
+                # 根据具体的字体大小值精确计算列宽
+                # 确保在不影响外扩的情况下，调整列宽
+                # 不同字体大小对应不同的列宽
+                if new_font_size == 12:  # 100% 字体大小
+                    column_widths = {
+                        "时间": 250,  # 100%时时间列宽度
+                        "名称": 200,  # 100%时名称列宽度（调整为更窄）
+                        "品质": 140,  # 100%时品质列宽度
+                        "重量": 160   # 100%时重量列宽度
+                    }
+                elif new_font_size == 18:  # 150% 字体大小
+                    column_widths = {
+                        "时间": 320,  # 150%时时间列宽度
+                        "名称": 280,  # 150%时名称列宽度（调整为更窄）
+                        "品质": 180,  # 150%时品质列宽度
+                        "重量": 220   # 150%时重量列宽度
+                    }
+                elif new_font_size == 24:  # 200% 字体大小
+                    column_widths = {
+                        "时间": 400,  # 200%时时间列宽度
+                        "名称": 360,  # 200%时名称列宽度（调整为更窄）
+                        "品质": 240,  # 200%时品质列宽度
+                        "重量": 280   # 200%时重量列宽度
+                    }
+                else:  # 其他字体大小，使用动态计算
+                    # 基于字体大小动态计算列宽
+                    column_widths = {
+                        "时间": 200 + (new_font_size * 10),  # 时间列
+                        "名称": 160 + (new_font_size * 8),   # 名称列（调整为更窄）
+                        "品质": 100 + (new_font_size * 6),  # 品质列
+                        "重量": 120 + (new_font_size * 8)   # 重量列
+                    }
+                
+                # print(f"根据字体大小 {new_font_size}px 计算得到的列宽: {column_widths}")
+                
+                # 应用新列宽到Treeview
+                for col, width in column_widths.items():
+                    fish_tree_ref.column(col, width=width, anchor="center" if col != "名称" else "w")
+                
+                # 动态调整行高，通过样式设置
+                # 计算合适的行高
+                new_rowheight = int(new_font_size * 2.2)  # 行高为字体大小的2.2倍，确保垂直间距合适
+                
+                # 直接通过样式修改Treeview行高
+                # 尝试修改多种Treeview样式，确保覆盖所有可能的样式名称
+                style.configure("Treeview", rowheight=new_rowheight)
+                style.configure("Info.Treeview", rowheight=new_rowheight)  # 对应bootstyle="info"
+                style.configure("Table.Treeview", rowheight=new_rowheight)  # ttkbootstrap默认Treeview样式
+                style.configure("CustomTreeview.Treeview", rowheight=new_rowheight)  # 自定义样式
+                
+                # 强制更新Treeview布局，确保列宽和行高调整立即生效
+                fish_tree_ref.update_idletasks()
+                
+                # 不调整外面的布局，只调整Treeview内部列宽和行高
+                # 确保父容器的大小不会受到影响
+            except Exception as e:
+                print(f"调整Treeview列宽时出错: {e}")
+                # 处理可能的错误
+                pass
+
     # ==================== 右侧面板（钓鱼记录区域） ====================
     right_panel = ttkb.Frame(main_frame)
     right_panel.grid(row=0, column=1, sticky="nsew")
+    
+    # 配置右侧面板的行列权重，确保内部组件能正确扩展
+    right_panel.columnconfigure(0, weight=1)  # 唯一列自适应宽度
+    right_panel.rowconfigure(0, weight=1)  # 唯一行自适应高度
 
     # ==================== 钓鱼记录卡片 ====================
     # 先创建style对象
@@ -713,9 +1392,12 @@ def create_gui():
     search_frame.pack(fill=X, pady=(0, 10))
 
     search_var = ttkb.StringVar()
-    search_entry = ttkb.Entry(search_frame, textvariable=search_var, width=15, font=("Segoe UI", 9))
+    search_entry = ttkb.Entry(search_frame, textvariable=search_var, width=15)
     search_entry.pack(side=LEFT, padx=(0, 5))
     search_entry.insert(0, "搜索鱼名...")
+    
+    # 保存搜索输入框到全局列表
+    input_entries.append(search_entry)
 
     def on_search_focus_in(event):
         if search_entry.get() == "搜索鱼名...":
@@ -740,18 +1422,20 @@ def create_gui():
 
     # 品质筛选
     quality_var = ttkb.StringVar(value="全部")
-    quality_label = ttkb.Label(search_frame, text="品质:", font=("Segoe UI", 9))
+    quality_label = ttkb.Label(search_frame, text="品质:")
     quality_label.pack(side=LEFT)
     quality_combo = ttkb.Combobox(
         search_frame,
         textvariable=quality_var,
         values=["全部"] + GUI_QUALITY_LEVELS,
         width=8,
-        state="readonly",
-        font=("Segoe UI", 9)
+        state="readonly"
     )
     quality_combo.pack(side=LEFT, padx=5)
     quality_combo.bind("<<ComboboxSelected>>", lambda e: update_fish_display())
+    
+    # 保存品质筛选组合框到全局列表
+    combo_boxes.append(quality_combo)
 
     # 统计信息卡片
     # 设置自定义紫色边框
@@ -781,26 +1465,26 @@ def create_gui():
     total_var = ttkb.StringVar(value="📝 总计: 0 条")
     
     # 品质统计标签 - 网格布局
-    standard_label = ttkb.Label(stats_grid, textvariable=standard_var, font=("Segoe UI", 10, "bold"), foreground="#FFFFFF")
+    standard_label = ttkb.Label(stats_grid, textvariable=standard_var, foreground="#FFFFFF")
     standard_label.pack(side=LEFT, padx=10, pady=8, expand=True, fill=X)
     
-    uncommon_label = ttkb.Label(stats_grid, textvariable=uncommon_var, font=("Segoe UI", 10, "bold"), foreground="#2ECC71")
+    uncommon_label = ttkb.Label(stats_grid, textvariable=uncommon_var, foreground="#2ECC71")
     uncommon_label.pack(side=LEFT, padx=10, pady=8, expand=True, fill=X)
     
-    rare_label = ttkb.Label(stats_grid, textvariable=rare_var, font=("Segoe UI", 10, "bold"), foreground="#1E90FF")
+    rare_label = ttkb.Label(stats_grid, textvariable=rare_var, foreground="#1E90FF")
     rare_label.pack(side=LEFT, padx=10, pady=8, expand=True, fill=X)
     
-    epic_label = ttkb.Label(stats_grid, textvariable=epic_var, font=("Segoe UI", 10, "bold"), foreground="#9B59B6")
+    epic_label = ttkb.Label(stats_grid, textvariable=epic_var, foreground="#9B59B6")
     epic_label.pack(side=LEFT, padx=10, pady=8, expand=True, fill=X)
     
-    legendary_label = ttkb.Label(stats_grid, textvariable=legendary_var, font=("Segoe UI", 10, "bold"), foreground="#F1C40F")
+    legendary_label = ttkb.Label(stats_grid, textvariable=legendary_var, foreground="#F1C40F")
     legendary_label.pack(side=LEFT, padx=10, pady=8, expand=True, fill=X)
     
     # 总计和清空按钮框架
     total_frame = ttkb.Frame(stats_card)
     total_frame.pack(fill=X, expand=True)
     
-    total_label = ttkb.Label(total_frame, textvariable=total_var, font=("Segoe UI", 11, "bold"), bootstyle="success")
+    total_label = ttkb.Label(total_frame, textvariable=total_var, bootstyle="success")
     total_label.pack(side=LEFT, padx=10, pady=8)
     
     # 清空按钮
@@ -822,23 +1506,29 @@ def create_gui():
         tree_container,
         columns=columns,
         show="headings",
-        bootstyle="info"
+        style="CustomTreeview.Treeview"  # 使用自定义样式名称，避免bootstyle冲突
     )
+    
+    # 保存Treeview引用到全局变量
+    global fish_tree_ref
+    fish_tree_ref = fish_tree
 
     # 添加垂直滚动条（放在Treeview右侧）
     tree_scroll = ttkb.Scrollbar(tree_container, orient="vertical", command=fish_tree.yview, bootstyle="rounded")
     fish_tree.configure(yscrollcommand=tree_scroll.set)
 
-    # 设置列标题和宽度
+    # 设置列标题
     fish_tree.heading("时间", text="时间")
     fish_tree.heading("名称", text="鱼名")
     fish_tree.heading("品质", text="品质")
     fish_tree.heading("重量", text="重量")
 
-    fish_tree.column("时间", width=145, anchor="center")  # 增加宽度以显示完整日期时间(年月日时分秒)
-    fish_tree.column("名称", width=110, anchor="w")
-    fish_tree.column("品质", width=50, anchor="center")
-    fish_tree.column("重量", width=65, anchor="center")
+    # 不设置固定列宽，而是在程序初始化后调用动态调整列宽的函数
+    # 初始化列宽为0，稍后会根据字体大小动态调整
+    fish_tree.column("时间", width=0, anchor="center", stretch=NO)  # 禁用自动拉伸，由我们自己控制列宽
+    fish_tree.column("名称", width=0, anchor="w", stretch=NO)      # 禁用自动拉伸，由我们自己控制列宽
+    fish_tree.column("品质", width=0, anchor="center", stretch=NO) # 禁用自动拉伸，由我们自己控制列宽
+    fish_tree.column("重量", width=0, anchor="center", stretch=NO) # 禁用自动拉伸，由我们自己控制列宽
 
     # 布局Treeview和滚动条
     fish_tree.pack(side=LEFT, fill=BOTH, expand=YES)
@@ -864,7 +1554,6 @@ def create_gui():
     stats_label = ttkb.Label(
         fish_record_card,
         textvariable=stats_var,
-        font=("Segoe UI", 9),
         bootstyle="info"
     )
     stats_label.pack()
@@ -997,9 +1686,102 @@ def create_gui():
 
 
     # ==================== 操作按钮区域（左侧面板底部） ====================
-    btn_frame = ttkb.Frame(left_panel)
+    btn_frame = ttkb.Frame(left_content_frame)
     btn_frame.pack(fill=X, pady=(8, 0))
 
+    def show_restart_dialog():
+        """显示需要重启软件的提示对话框"""
+        # 创建自定义对话框
+        dialog = ttkb.Toplevel(root)  # 创建顶层窗口，不直接设置bootstyle
+        dialog.title("🎣 提示")  # 添加图标前缀
+        dialog.geometry("420x160")  # 调整尺寸，更宽松的布局
+        dialog.resizable(False, False)
+        dialog.grab_set()  # 模态对话框
+        dialog.attributes('-alpha', 0.98)  # 添加轻微透明度
+        
+        # 添加对话框图标，处理打包后的资源路径
+        try:
+            import sys
+            import os
+            # 处理PyInstaller打包后的资源路径
+            if hasattr(sys, '_MEIPASS'):
+                # 打包后使用_internal目录
+                icon_path = os.path.join(sys._MEIPASS, "666.ico")
+            else:
+                # 开发环境使用当前目录
+                icon_path = "666.ico"
+            dialog.iconbitmap(icon_path)
+        except Exception as e:
+            pass  # 忽略图标加载错误
+        
+        # 计算中心位置
+        x = root.winfo_x() + (root.winfo_width() // 2) - (420 // 2)
+        y = root.winfo_y() + (root.winfo_height() // 2) - (160 // 2)
+        dialog.geometry(f"420x160+{x}+{y}")
+        
+        # 创建内容框架
+        content_frame = ttkb.Frame(dialog, padding=25)
+        content_frame.pack(fill=BOTH, expand=YES)
+        
+        # 提示文本，增强样式
+        message_label = ttkb.Label(
+            content_frame,
+            text="⚠️ 设置已保存，需要重启软件才能生效！",
+            font=('Segoe UI', 12, 'bold'),  # 增大字体并加粗
+            bootstyle="info",
+            justify="center",  # 居中对齐
+            wraplength=380  # 自动换行
+        )
+        message_label.pack(pady=(10, 25), fill=X)  # 调整边距，填充水平空间
+        
+        # 按钮框架
+        dialog_btn_frame = ttkb.Frame(content_frame)
+        dialog_btn_frame.pack(fill=X)
+        
+        def auto_restart():
+            """自动重启软件"""
+            dialog.destroy()
+            # 关闭当前应用
+            root.destroy()
+            # 重新启动应用
+            import sys
+            import os
+            python = sys.executable
+            os.execl(python, python, *sys.argv)
+        
+        def got_it():
+            """我知道了，不重启"""
+            dialog.destroy()
+        
+        # 按钮框架布局优化
+        dialog_btn_frame.pack(fill=X, pady=(0, 10))
+        dialog_btn_frame.columnconfigure(0, weight=1)
+        dialog_btn_frame.columnconfigure(1, weight=1)
+        
+        # 自动重启按钮，增强样式
+        restart_btn = ttkb.Button(
+            dialog_btn_frame,
+            text="🔄 自动重启软件",
+            command=auto_restart,
+            bootstyle="success-outline",
+            width=18,
+            padding=5,
+            cursor="hand2"
+        )
+        restart_btn.grid(row=0, column=0, padx=(0, 15), sticky="ew")
+        
+        # 我知道了按钮，增强样式
+        got_it_btn = ttkb.Button(
+            dialog_btn_frame,
+            text="✅ 我知道了",
+            command=got_it,
+            bootstyle="info-outline",
+            width=18,
+            padding=5,
+            cursor="hand2"
+        )
+        got_it_btn.grid(row=0, column=1, padx=(15, 0), sticky="ew")
+    
     def update_and_refresh():
         """更新参数并刷新显示"""
         update_parameters(
@@ -1014,6 +1796,8 @@ def create_gui():
         # 显示保存成功提示
         status_label.config(text="✅ 参数已保存", bootstyle="success")
         root.after(2000, lambda: status_label.config(text=f"按 {hotkey_name} 启动/暂停", bootstyle="light"))
+        # 显示需要重启的提示对话框
+        root.after(500, show_restart_dialog)
 
     update_button = ttkb.Button(
         btn_frame,
@@ -1034,15 +1818,13 @@ def create_gui():
     status_label = ttkb.Label(
         status_frame,
         text=f"按 {hotkey_name} 启动/暂停",
-        font=("Segoe UI", 9),
         bootstyle="light"
     )
     status_label.pack()
 
     version_label = ttkb.Label(
         status_frame,
-        text="v2.0 | PartyFish",
-        font=("Segoe UI", 7),
+        text="v2.4 | PartyFish",
         bootstyle="light"
     )
     version_label.pack(pady=(2, 0))
@@ -1050,7 +1832,7 @@ def create_gui():
     # ==================== 开发者信息 ====================
     def open_github(event=None):
         """打开GitHub主页"""
-        webbrowser.open("https://github.com/FADEDTUMI")
+        webbrowser.open("https://github.com/FADEDTUMI/PartyFish/")
 
     dev_frame = ttkb.Frame(status_frame)
     dev_frame.pack(pady=(3, 0))
@@ -1058,7 +1840,6 @@ def create_gui():
     dev_label = ttkb.Label(
         dev_frame,
         text="by ",
-        font=("Segoe UI", 7),
         bootstyle="light"
     )
     dev_label.pack(side=LEFT)
@@ -1066,8 +1847,7 @@ def create_gui():
     # 可点击的开发者链接
     dev_link = ttkb.Label(
         dev_frame,
-        text="FadedTUMI",
-        font=("Segoe UI", 7, "underline"),
+        text="FadedTUMI/PeiXiaoXiao",
         bootstyle="info",
         cursor="hand2"
     )
@@ -1084,6 +1864,80 @@ def create_gui():
     dev_link.bind("<Enter>", on_enter)
     dev_link.bind("<Leave>", on_leave)
 
+    # 应用保存的字体大小设置
+    update_all_widget_fonts(root, style, font_size)
+    
+    # 在GUI初始化完成后，根据当前字体大小动态调整Treeview列宽
+    # 确保程序启动时就能显示正确的列宽
+    print(f"初始化后应用字体大小: {font_size}%")
+    
+    # 计算新的字体大小（像素单位）
+    # 确保字体大小按照要求计算：
+    # - 100% 时为 12px
+    # - 150% 时为 18px
+    # - 200% 时为 24px
+    base_font_size = 12  # 基础字体大小为12px（100%时）
+    new_font_size = int(base_font_size * (font_size / 100.0))
+    
+    # 精确调整字体大小，确保符合要求
+    if font_size == 100:
+        new_font_size = 12
+    elif font_size == 150:
+        new_font_size = 18
+    elif font_size == 200:
+        new_font_size = 24
+    
+    print(f"初始化时使用的字体大小: {new_font_size}px")
+    
+    # 根据具体的字体大小值精确计算列宽
+    if new_font_size == 12:  # 100% 字体大小
+        column_widths = {
+            "时间": 250,  # 100%时时间列宽度
+            "名称": 200,  # 100%时名称列宽度（调整为更窄）
+            "品质": 140,  # 100%时品质列宽度
+            "重量": 160   # 100%时重量列宽度
+        }
+    elif new_font_size == 18:  # 150% 字体大小
+        column_widths = {
+            "时间": 320,  # 150%时时间列宽度
+            "名称": 280,  # 150%时名称列宽度（调整为更窄）
+            "品质": 180,  # 150%时品质列宽度
+            "重量": 220   # 150%时重量列宽度
+        }
+    elif new_font_size == 24:  # 200% 字体大小
+        column_widths = {
+            "时间": 400,  # 200%时时间列宽度
+            "名称": 360,  # 200%时名称列宽度（调整为更窄）
+            "品质": 240,  # 200%时品质列宽度
+            "重量": 280   # 200%时重量列宽度
+        }
+    else:  # 其他字体大小，使用动态计算
+        # 基于字体大小动态计算列宽
+        column_widths = {
+            "时间": 200 + (new_font_size * 10),  # 时间列
+            "名称": 160 + (new_font_size * 8),   # 名称列（调整为更窄）
+            "品质": 100 + (new_font_size * 6),  # 品质列
+            "重量": 120 + (new_font_size * 8)   # 重量列
+        }
+    
+    print(f"初始化时计算得到的列宽: {column_widths}")
+    
+    # 应用新列宽到Treeview
+    if fish_tree_ref:
+        for col, width in column_widths.items():
+            fish_tree_ref.column(col, width=width, anchor="center" if col != "名称" else "w")
+        
+        # 初始化设置行高
+        new_rowheight = int(new_font_size * 2.2)  # 行高为字体大小的2.2倍
+        # 尝试修改多种Treeview样式，确保覆盖所有可能的样式名称
+        style.configure("Treeview", rowheight=new_rowheight)
+        style.configure("Info.Treeview", rowheight=new_rowheight)  # 对应bootstyle="info"
+        style.configure("Table.Treeview", rowheight=new_rowheight)  # ttkbootstrap默认Treeview样式
+        style.configure("CustomTreeview.Treeview", rowheight=new_rowheight)  # 自定义样式
+        
+        # 强制更新Treeview布局，确保列宽和行高调整立即生效
+        fish_tree_ref.update_idletasks()
+    
     # 运行 GUI
     root.mainloop()
 # =========================
@@ -1175,8 +2029,9 @@ def scale_corner_anchored(base_x, base_y, base_w, base_h, anchor="bottom_right")
         offset_from_right = BASE_WIDTH - base_x
         offset_from_bottom = BASE_HEIGHT - base_y
         # 在目标分辨率中，从右下角计算实际位置
-        # 使用基于高度的缩放比例，确保16:10等非16:9分辨率下元素正确定位
-        scale = SCALE_UNIFORM
+        # 对于右下角锚定的元素（如鱼饵数量），使用基于宽度的缩放
+        # 确保水平距离右侧的位置正确，垂直距离底部的位置也相应调整
+        scale = SCALE_X  # 使用基于宽度的缩放，确保右侧距离正确
         new_x = TARGET_WIDTH - int(offset_from_right * scale)
         new_y = TARGET_HEIGHT - int(offset_from_bottom * scale)
         new_w = int(base_w * scale)
@@ -1586,7 +2441,10 @@ region5_coords = scale_coords(1212, 1329, 10, 19)   #F2位置
 region6_coords = scale_coords(1146, 1316, 17, 21)   #上鱼右键
 
 # 鱼饵数量区域（基准值）
-BAIT_REGION_BASE = (2318, 1296, 2348, 1318)
+# 扩大基础区域，确保在小分辨率下仍能完整捕获鱼饵数字
+# 原始区域：(2318, 1296, 2348, 1318) → 宽30px，高22px
+# 新区域：(2300, 1280, 2360, 1330) → 宽60px，高50px，扩大了捕获范围
+BAIT_REGION_BASE = (2300, 1280, 2360, 1330)
 # 加时界面检测区域（基准值）
 JIASHI_REGION_BASE = (1245, 675, 26, 27)
 # 点击按钮位置（基准值）
@@ -1644,6 +2502,9 @@ SPECIAL_KEY_NAMES = {
     keyboard.Key.print_screen: "PrintScreen",
     keyboard.Key.scroll_lock: "ScrollLock", keyboard.Key.caps_lock: "CapsLock",
     keyboard.Key.num_lock: "NumLock",
+    # 鼠标侧键支持
+    mouse.Button.x1: "Mouse4",  # 鼠标前进键
+    mouse.Button.x2: "Mouse5",  # 鼠标后退键
 }
 
 # 反向映射：名称 -> 按键对象
@@ -1653,6 +2514,7 @@ def parse_hotkey_string(hotkey_str):
     """
     解析热键字符串，返回 (修饰键集合, 主按键对象, 主按键名称)
     例如: "Ctrl+Shift+A" -> ({'ctrl', 'shift'}, KeyCode(char='a'), 'A')
+    支持鼠标侧键: "Mouse4" -> (set(), mouse.Button.x1, "Mouse4")
     """
     parts = [p.strip() for p in hotkey_str.split('+')]
     modifiers = set()
@@ -1681,7 +2543,13 @@ def parse_hotkey_string(hotkey_str):
                 try:
                     main_key = getattr(keyboard.Key, part.lower())
                 except AttributeError:
-                    main_key = keyboard.KeyCode.from_char(part[0].lower())
+                    # 检查是否是鼠标侧键
+                    if part == "Mouse4":
+                        main_key = mouse.Button.x1
+                    elif part == "Mouse5":
+                        main_key = mouse.Button.x2
+                    else:
+                        main_key = keyboard.KeyCode.from_char(part[0].lower())
 
     return modifiers, main_key, main_key_name
 
@@ -1699,8 +2567,10 @@ def format_hotkey_display(modifiers, main_key_name):
 
 def key_to_name(key):
     """将按键对象转换为显示名称"""
+    # 检查是否为鼠标按键
     if key in SPECIAL_KEY_NAMES:
         return SPECIAL_KEY_NAMES[key]
+    # 处理键盘按键
     elif hasattr(key, 'vk') and key.vk is not None:
         # 通过虚拟键码识别按键（解决Ctrl+字母时char为控制字符的问题）
         vk = key.vk
@@ -1898,8 +2768,8 @@ def compare_results():
 BAIT_CROP_HEIGHT_BASE = 22
 BAIT_CROP_WIDTH1_BASE = 15  # 单个数字宽度
 
-def bait_math_val():
-    global  region1, region2, result_val_is, scr
+def bait_math_val(scr):
+    global  region1, region2, result_val_is
     # 鱼饵数量显示在屏幕右下角，使用锚定方式计算坐标
     x1, y1, x2, y2 = BAIT_REGION_BASE
     base_w = x2 - x1
@@ -1920,24 +2790,32 @@ def bait_math_val():
         img = np.array(math_frame)  # screenshot 是 ScreenShot 类型，转换为 NumPy 数组
         gray_img = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
 
-        # 根据统一缩放比例动态计算裁切尺寸
-        scale = SCALE_UNIFORM
-        crop_h = max(1, int(BAIT_CROP_HEIGHT_BASE * scale))
-        crop_w = max(1, int(BAIT_CROP_WIDTH1_BASE * scale))
-        mid_start = max(0, int(7 * scale))  # 中间区域起始位置
-
-        # 确保不超出图像边界
+        # 直接使用捕获区域的实际尺寸进行处理
+        # 移除冗余的缩放计算，直接基于捕获图像的实际尺寸
         img_h, img_w = gray_img.shape[:2]
-        crop_h = min(crop_h, img_h)
-        crop_w = min(crop_w, img_w // 2)  # 确保单个数字宽度不超过一半
+        
+        # 单个数字宽度为捕获区域宽度的一半，确保能正确识别两位数
+        crop_w = max(1, img_w // 2)
+        # 使用完整高度，确保完整覆盖数字
+        crop_h = img_h
+
+        # 初始化匹配结果
+        best_match1 = None
+        best_match2 = None
+        best_match3 = None
 
         # 截取并处理区域1（第一个数字）
-        region1 = gray_img[0:crop_h, 0:crop_w]
-        best_match1 = match_digit_template(region1)
+        if crop_w <= img_w:
+            region1 = gray_img[0:crop_h, 0:crop_w]
+            best_match1 = match_digit_template(region1)
+        
         # 截取并处理区域2（第二个数字）
-        region2 = gray_img[0:crop_h, crop_w:crop_w*2]
-        best_match2 = match_digit_template(region2)
-        # 单个数字居中区域
+        if crop_w*2 <= img_w:
+            region2 = gray_img[0:crop_h, crop_w:crop_w*2]
+            best_match2 = match_digit_template(region2)
+        
+        # 单个数字居中区域 - 动态计算起始位置，适应各种分辨率
+        mid_start = max(0, (img_w - crop_w) // 2)
         mid_end = min(mid_start + crop_w, img_w)
         region3 = gray_img[0:crop_h, mid_start:mid_end]
         best_match3 = match_digit_template(region3)
@@ -1970,7 +2848,7 @@ def match_digit_template(image):
             best_match = (i, max_loc)  # 记录最佳匹配的数字和位置
     return best_match
 
-def capture_region(x, y, w, h):
+def capture_region(x, y, w, h, scr):
     region = (x, y,x+w,y+h)
     frame = scr.grab(region)
     if frame is None:
@@ -1980,45 +2858,45 @@ def capture_region(x, y, w, h):
     return gray_img
 
 #识别钓上鱼
-def fished():
+def fished(scr):
     global region3_coords, star_template
     # 确保模板已加载
     if star_template is None:
         load_star_template()
     # 获取区域坐标并捕获灰度图
-    region_gray = capture_region(*region3_coords)  # 直接传递解包后的参数
+    region_gray = capture_region(*region3_coords, scr)  # 直接传递解包后的参数和scr
     if region_gray is None:
         return None
     # 执行模板匹配并检查最大匹配度是否大于 0.8
     return cv2.minMaxLoc(cv2.matchTemplate(region_gray, star_template, cv2.TM_CCOEFF_NORMED))[1] > 0.8
-def f1_mached():
+def f1_mached(scr):
     global region4_coords, f1
     # 确保模板已加载
     if f1 is None:
         load_f1()
-    region_gray = capture_region(*region4_coords)
+    region_gray = capture_region(*region4_coords, scr)
     if region_gray is None:
         return None
     return cv2.minMaxLoc(cv2.matchTemplate(region_gray, f1, cv2.TM_CCOEFF_NORMED))[1] > 0.8
-def f2_mached():
+def f2_mached(scr):
     global region5_coords, f2
     # 确保模板已加载
     if f2 is None:
         load_f2()
-    region_gray = capture_region(*region5_coords)
+    region_gray = capture_region(*region5_coords, scr)
     if region_gray is None:
         return None
     return cv2.minMaxLoc(cv2.matchTemplate(region_gray, f2, cv2.TM_CCOEFF_NORMED))[1] > 0.8
-def shangyu_mached():
+def shangyu_mached(scr):
     global region6_coords, shangyule
     # 确保模板已加载
     if shangyule is None:
         load_shangyule()
-    region_gray = capture_region(*region6_coords)
+    region_gray = capture_region(*region6_coords, scr)
     if region_gray is None:
         return None
     return cv2.minMaxLoc(cv2.matchTemplate(region_gray, shangyule, cv2.TM_CCOEFF_NORMED))[1] > 0.8
-def fangzhu_jiashi():
+def fangzhu_jiashi(scr):
     global jiashi
     # 确保模板已加载
     if jiashi is None:
@@ -2032,7 +2910,7 @@ def fangzhu_jiashi():
     actual_y = int(TARGET_HEIGHT / 2 + center_offset_y * scale)
     actual_w = int(w * scale)
     actual_h = int(h * scale)
-    region_gray = capture_region(actual_x, actual_y, actual_w, actual_h)
+    region_gray = capture_region(actual_x, actual_y, actual_w, actual_h, scr)
     if region_gray is None:
         return None
     return cv2.minMaxLoc(cv2.matchTemplate(region_gray, jiashi, cv2.TM_CCOEFF_NORMED))[1] > 0.8
@@ -2054,8 +2932,7 @@ def toggle_run():
             temp_scr = None
             try:
                 temp_scr = mss.mss()
-                scr = temp_scr  # 临时赋值供bait_math_val使用
-                bait_result = bait_math_val()
+                bait_result = bait_math_val(temp_scr)
                 if bait_result is not None:
                     previous_result = result_val_is
                     run_event.set()  # 恢复运行
@@ -2086,20 +2963,7 @@ def on_press(key):
         return
 
     # 检查是否匹配热键
-    # 比较主按键
-    main_key_match = False
-    if key == hotkey_main_key:
-        main_key_match = True
-    elif hasattr(key, 'char') and hasattr(hotkey_main_key, 'char'):
-        # 比较字符键（忽略大小写）
-        if key.char and hotkey_main_key.char:
-            main_key_match = (key.char.lower() == hotkey_main_key.char.lower())
-
-    if main_key_match:
-        # 检查修饰键是否匹配
-        if current_modifiers == hotkey_modifiers:
-            toggle_run()  # 暂停或恢复程序
-            return
+    check_hotkey_match(key)
 
 def on_release(key):
     global current_modifiers
@@ -2107,18 +2971,97 @@ def on_release(key):
     if key in MODIFIER_KEYS:
         current_modifiers.discard(MODIFIER_KEYS[key])
 
+def on_mouse_press(x, y, button, pressed):
+    """鼠标按下事件处理"""
+    if not pressed:
+        return
+    
+    # 检查是否匹配热键
+    check_hotkey_match(button)
+
+def check_hotkey_match(key):
+    """检查按键是否匹配热键"""
+    # 比较主按键
+    main_key_match = False
+    
+    # 直接比较按键对象
+    if key == hotkey_main_key:
+        main_key_match = True
+    # 字符键比较（忽略大小写）
+    elif hasattr(key, 'char') and hasattr(hotkey_main_key, 'char'):
+        if key.char and hotkey_main_key.char:
+            main_key_match = (key.char.lower() == hotkey_main_key.char.lower())
+    # 鼠标按键比较
+    elif isinstance(key, mouse.Button) and isinstance(hotkey_main_key, mouse.Button):
+        main_key_match = (key == hotkey_main_key)
+
+    if main_key_match:
+        # 检查修饰键是否匹配
+        if current_modifiers == hotkey_modifiers:
+            toggle_run()  # 暂停或恢复程序
+            return
+
 def start_hotkey_listener():
-    global listener
+    global listener, mouse_listener
+    # 启动键盘监听器
     if listener is None or not listener.running:
         listener = keyboard.Listener(on_press=on_press, on_release=on_release)
         listener.daemon = True
         listener.start()
+    
+    # 启动鼠标监听器
+    if 'mouse_listener' not in globals() or mouse_listener is None or not mouse_listener.running:
+        mouse_listener = mouse.Listener(on_click=on_mouse_press)
+        mouse_listener.daemon = True
+        mouse_listener.start()
 # =========================
 # 主函数
 # =========================
 # 主函数：定时识别并比较数字
+def handle_jiashi_thread():
+    global run_event, begin_event, previous_result, result_val_is
+    while not begin_event.is_set():
+        if run_event.is_set():
+            try:
+                with mss.mss() as scr:
+                    # 处理加时选择（使用锁保护读取jiashi_var）
+                    with param_lock:
+                        current_jiashi = jiashi_var
+
+                    if current_jiashi == 0:
+                        if fangzhu_jiashi(scr):
+                            btn_x, btn_y = scale_point_center_anchored(*BTN_NO_JIASHI_BASE)
+                            user32.SetCursorPos(btn_x, btn_y)
+                            time.sleep(0.05)
+                            user32.mouse_event(0x02, 0, 0, 0, 0)
+                            time.sleep(0.1)
+                            user32.mouse_event(0x04, 0, 0, 0, 0)
+                            time.sleep(0.05)
+                            if bait_math_val(scr):
+                                with param_lock:
+                                    previous_result = result_val_is
+                    elif current_jiashi == 1:
+                        if fangzhu_jiashi(scr):
+                            btn_x, btn_y = scale_point_center_anchored(*BTN_YES_JIASHI_BASE)
+                            user32.SetCursorPos(btn_x, btn_y)
+                            time.sleep(0.05)
+                            user32.mouse_event(0x02, 0, 0, 0, 0)
+                            time.sleep(0.1)
+                            user32.mouse_event(0x04, 0, 0, 0, 0)
+                            time.sleep(0.05)
+                            if bait_math_val(scr):
+                                with param_lock:
+                                    previous_result = result_val_is
+            except Exception as e:
+                print(f"❌ [错误] 加时线程异常: {e}")
+        time.sleep(0.05)
+
 def main():
     global templates, template_folder_path, current_result, previous_result, times, a, region1, region2, result_val_is, scr, jiashi_var
+
+    # 启动加时处理线程
+    jiashi_thread = threading.Thread(target=handle_jiashi_thread, daemon=True)
+    jiashi_thread.start()
 
     while not begin_event.is_set():
         if run_event.is_set():
@@ -2127,54 +3070,25 @@ def main():
                 scr = mss.mss()
 
                 # 检测F1/F2抛竿
-                if f1_mached():
+                if f1_mached(scr):
                     user32.mouse_event(0x02, 0, 0, 0, 0)
                     time.sleep(paogantime)
                     user32.mouse_event(0x04, 0, 0, 0, 0)
                     time.sleep(0.15)
-                elif f2_mached():
+                elif f2_mached(scr):
                     user32.mouse_event(0x02, 0, 0, 0, 0)
                     time.sleep(paogantime)
                     user32.mouse_event(0x04, 0, 0, 0, 0)
                     time.sleep(0.15)
-                elif shangyu_mached():
+                elif shangyu_mached(scr):
                     user32.mouse_event(0x02, 0, 0, 0, 0)
                     time.sleep(0.1)
                     user32.mouse_event(0x04, 0, 0, 0, 0)
 
                 time.sleep(0.05)
 
-                # 处理加时选择（使用锁保护读取jiashi_var）
-                with param_lock:
-                    current_jiashi = jiashi_var
-
-                if current_jiashi == 0:
-                    if fangzhu_jiashi():
-                        btn_x, btn_y = scale_point_center_anchored(*BTN_NO_JIASHI_BASE)
-                        user32.SetCursorPos(btn_x, btn_y)
-                        time.sleep(0.05)
-                        user32.mouse_event(0x02, 0, 0, 0, 0)
-                        time.sleep(0.1)
-                        user32.mouse_event(0x04, 0, 0, 0, 0)
-                        time.sleep(0.05)
-                        if bait_math_val():
-                            previous_result = result_val_is
-                elif current_jiashi == 1:
-                    if fangzhu_jiashi():
-                        btn_x, btn_y = scale_point_center_anchored(*BTN_YES_JIASHI_BASE)
-                        user32.SetCursorPos(btn_x, btn_y)
-                        time.sleep(0.05)
-                        user32.mouse_event(0x02, 0, 0, 0, 0)
-                        time.sleep(0.1)
-                        user32.mouse_event(0x04, 0, 0, 0, 0)
-                        time.sleep(0.05)
-                        if bait_math_val():
-                            previous_result = result_val_is
-
-                time.sleep(0.05)
-
                 # 获取当前结果
-                bait_result = bait_math_val()
+                bait_result = bait_math_val(scr)
                 if bait_result is not None:
                     current_result = result_val_is
                 else:
@@ -2188,7 +3102,7 @@ def main():
 
                 if comparison_result == -1:  # 当前结果小于上次结果
                     previous_result = current_result  # 更新上次识别的结果
-                    while not fished() and run_event.is_set():
+                    while not fished(scr) and run_event.is_set():
                         # 使用锁保护读取times
                         with param_lock:
                             current_times = times
@@ -2208,11 +3122,9 @@ def main():
                             record_caught_fish()
                         except Exception as e:
                             print(f"⚠️  [警告] 记录鱼信息失败: {e}")
-
                 elif comparison_result == 1:
                     previous_result = current_result
                     # continue会在finally中关闭scr
-
             except Exception as e:
                 print(f"❌ [错误] 主循环异常: {e}")
             finally:
@@ -2223,7 +3135,6 @@ def main():
                     except:
                         pass
                     scr = None
-
         time.sleep(0.1)
 
 # =========================
@@ -2236,12 +3147,12 @@ if __name__ == "__main__":
     print()
     print("╔" + "═" * 50 + "╗")
     print("║" + " " * 50 + "║")
-    print("║     🎣  PartyFish 自动钓鱼助手  v2.0            ║")
+    print("║     🎣  PartyFish 自动钓鱼助手  v2.4             ║")
     print("║" + " " * 50 + "║")
     print("╠" + "═" * 50 + "╣")
-    print(f"║  📺 当前分辨率: {TARGET_WIDTH} × {TARGET_HEIGHT}".ljust(51) + "║")
-    print(f"║  ⌨️  快捷键: {hotkey_name} 启动/暂停脚本".ljust(49) + "║")
-    print("║  🔧 开发者: FadedTUMI                            ║")
+    print(f"║  📺 当前分辨率: {TARGET_WIDTH}×{TARGET_HEIGHT}".ljust(45)+"║")
+    print(f"║  ⌨️ 快捷键: {hotkey_name}启动/暂停脚本".ljust(42)+"║")
+    print("║  🔧 开发者: FadedTUMI/PeiXiaoXiao                ║")
     print("╚" + "═" * 50 + "╝")
     print()
 
@@ -2268,7 +3179,7 @@ if __name__ == "__main__":
 
     print()
     print("┌" + "─" * 48 + "┐")
-    print(f"│  🚀 程序已就绪，按 {hotkey_name} 开始自动钓鱼！".ljust(47) + "│")
+    print(f"│  🚀 程序已就绪，按 {hotkey_name} 开始自动钓鱼！".ljust(34) + "│")
     print("└" + "─" * 48 + "┘")
     print()
 
