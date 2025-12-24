@@ -2029,9 +2029,8 @@ def scale_corner_anchored(base_x, base_y, base_w, base_h, anchor="bottom_right")
         offset_from_right = BASE_WIDTH - base_x
         offset_from_bottom = BASE_HEIGHT - base_y
         # 在目标分辨率中，从右下角计算实际位置
-        # 对于右下角锚定的元素（如鱼饵数量），使用基于宽度的缩放
-        # 确保水平距离右侧的位置正确，垂直距离底部的位置也相应调整
-        scale = SCALE_X  # 使用基于宽度的缩放，确保右侧距离正确
+        # 使用基于高度的缩放比例，确保16:10等非16:9分辨率下元素正确定位
+        scale = SCALE_UNIFORM
         new_x = TARGET_WIDTH - int(offset_from_right * scale)
         new_y = TARGET_HEIGHT - int(offset_from_bottom * scale)
         new_w = int(base_w * scale)
@@ -2441,10 +2440,7 @@ region5_coords = scale_coords(1212, 1329, 10, 19)   #F2位置
 region6_coords = scale_coords(1146, 1316, 17, 21)   #上鱼右键
 
 # 鱼饵数量区域（基准值）
-# 扩大基础区域，确保在小分辨率下仍能完整捕获鱼饵数字
-# 原始区域：(2318, 1296, 2348, 1318) → 宽30px，高22px
-# 新区域：(2300, 1280, 2360, 1330) → 宽60px，高50px，扩大了捕获范围
-BAIT_REGION_BASE = (2300, 1280, 2360, 1330)
+BAIT_REGION_BASE = (2318, 1296, 2348, 1318)
 # 加时界面检测区域（基准值）
 JIASHI_REGION_BASE = (1245, 675, 26, 27)
 # 点击按钮位置（基准值）
@@ -2790,14 +2786,15 @@ def bait_math_val(scr):
         img = np.array(math_frame)  # screenshot 是 ScreenShot 类型，转换为 NumPy 数组
         gray_img = cv2.cvtColor(img, cv2.COLOR_RGBA2GRAY)
 
-        # 直接使用捕获区域的实际尺寸进行处理
-        # 移除冗余的缩放计算，直接基于捕获图像的实际尺寸
+        # 根据统一缩放比例动态计算裁切尺寸
+        scale = SCALE_UNIFORM
+        crop_h = max(1, int(BAIT_CROP_HEIGHT_BASE * scale))
+        crop_w = max(1, int(BAIT_CROP_WIDTH1_BASE * scale))
+
+        # 确保不超出图像边界
         img_h, img_w = gray_img.shape[:2]
-        
-        # 单个数字宽度为捕获区域宽度的一半，确保能正确识别两位数
-        crop_w = max(1, img_w // 2)
-        # 使用完整高度，确保完整覆盖数字
-        crop_h = img_h
+        crop_h = min(crop_h, img_h)
+        crop_w = min(crop_w, img_w // 2)  # 确保单个数字宽度不超过一半
 
         # 初始化匹配结果
         best_match1 = None
