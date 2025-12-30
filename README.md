@@ -143,7 +143,8 @@ PartyFish/
 ├── PartyFish.py          # 主程序文件
 ├── PartyFish. spec        # PyInstaller 打包配置
 ├── 666.ico               # 程序图标
-├── build. bat             # 一键打包脚本
+├── build. bat            # 一键打包脚本
+├── MaiDong/              #共创者代码
 ├── parameters.json       # 参数配置文件（自动生成）
 ├── fish_records. txt      # 钓鱼记录文件（自动生成）
 ├── resources/            # 模板图像资源目录
