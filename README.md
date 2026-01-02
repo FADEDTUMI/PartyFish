@@ -1,4 +1,4 @@
-<img width="705" height="118" alt="image" src="https://github.com/user-attachments/assets/7109ae28-2c46-4bff-bc62-29272a9d548a" /># 🎣 PartyFish - 猛兽派对自动钓鱼助手
+# 🎣 PartyFish - 猛兽派对自动钓鱼助手
 
 <div align="center">
 
