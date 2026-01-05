@@ -199,11 +199,11 @@ def print_timing_info(operation_type, base_time, actual_time, previous_interval=
     
     # 设置颜色标记（绿色为接近基础时间，红色为偏差较大）
     if abs(deviation) <= 5:
-        deviation_display = f"\033[92m{deviation_str}\033[0m"  # 绿色
+        deviation_display = f"[92m{deviation_str}[0m"  # 绿色
     elif abs(deviation) <= 10:
-        deviation_display = f"\033[93m{deviation_str}\033[0m"  # 黄色
+        deviation_display = f"[93m{deviation_str}[0m"  # 黄色
     else:
-        deviation_display = f"\033[91m{deviation_str}\033[0m"  # 红色
+        deviation_display = f"[91m{deviation_str}[0m"  # 红色
     
     # 计算与上次操作的时间间隔
     interval_info = ""
@@ -216,13 +216,13 @@ def print_timing_info(operation_type, base_time, actual_time, previous_interval=
             interval_str = f"{interval:.3f}s ({interval_deviation:+.1f}%)"
             
             if abs(interval_deviation) <= 10:
-                interval_color = "\033[92m"  # 绿色
+                interval_color = "[92m"  # 绿色
             elif abs(interval_deviation) <= 20:
-                interval_color = "\033[93m"  # 黄色
+                interval_color = "[93m"  # 黄色
             else:
-                interval_color = "\033[91m"  # 红色
+                interval_color = "[91m"  # 红色
             
-            interval_info = f" | 间隔: {interval_color}{interval_str}\033[0m"
+            interval_info = f" | 间隔: {interval_color}{interval_str}[0m"
     
     # 更新最后操作信息
     last_operation_time = current_time
