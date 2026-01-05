@@ -3259,9 +3259,30 @@ def create_gui():
         dev_window.geometry("400x200")
         dev_window.resizable(False, False)
         
-        # 设置窗口图标（如果有）
-        if hasattr(root, 'icon'):
-            dev_window.iconphoto(False, root.icon)
+        # 设置窗口图标（与主窗口相同）
+        try:
+            import sys
+            import os
+            # 处理PyInstaller打包后的资源路径
+            if hasattr(sys, '_MEIPASS'):
+                # 打包后使用_internal目录
+                icon_path = os.path.join(sys._MEIPASS, "_internal", "666.ico")
+                # 如果_internal目录不存在，尝试直接在MEIPASS下查找
+                if not os.path.exists(icon_path):
+                    icon_path = os.path.join(sys._MEIPASS, "666.ico")
+            else:
+                # 开发环境使用当前目录
+                icon_path = "666.ico"
+            
+            # 使用iconphoto方法设置图标，同时支持窗口和任务栏图标
+            icon = tk.PhotoImage(file=icon_path)  # 使用全局导入的tk变量
+            dev_window.iconphoto(True, icon)  # True表示同时设置窗口和任务栏图标
+        except Exception as e:
+            # 如果iconphoto失败，尝试回退到iconbitmap
+            try:
+                dev_window.iconbitmap(icon_path)
+            except:
+                pass
         
         # 保存窗口实例
         dev_window_instance = dev_window
