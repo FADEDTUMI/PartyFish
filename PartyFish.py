@@ -130,7 +130,7 @@ param_lock = threading.Lock()  # 参数读写锁
 # 钓鱼记录开关
 # =========================
 record_fish_enabled = True  # 默认启用钓鱼记录
-legendary_screenshot_enabled = True # 默认关闭传说/传奇鱼自动截屏
+legendary_screenshot_enabled = True # 默认关闭传奇鱼自动截屏
 
 # =========================
 # 字体大小设置
@@ -621,7 +621,7 @@ def load_parameters():
             resolution_choice = params.get("resolution", "2K")
             # 加载钓鱼记录开关状态
             record_fish_enabled = params.get("record_fish_enabled", True)
-            # 加载传说/传奇鱼自动截屏开关状态
+            # 加载传奇鱼自动截屏开关状态
             legendary_screenshot_enabled = params.get("legendary_screenshot_enabled", True)
             # 加载字体大小设置
             font_size = params.get("font_size", 100)  # 默认100%
@@ -772,7 +772,7 @@ def update_parameters(t_var, leftclickdown_var, leftclickup_var, times_var, paog
             if record_fish_var is not None:
                 record_fish_enabled = bool(record_fish_var.get())
             
-            # 更新传说/传奇鱼自动截屏开关状态
+            # 更新传奇鱼自动截屏开关状态
             if legendary_screenshot_var is not None:
                 legendary_screenshot_enabled = bool(legendary_screenshot_var.get())
             
@@ -2250,13 +2250,13 @@ def create_gui():
     )
     record_no.pack(side=LEFT, padx=5)
 
-    # 传说/传奇鱼自动截屏开关
+    # 传奇鱼自动截屏开关
     legendary_screenshot_var = ttkb.IntVar(value=1 if legendary_screenshot_enabled else 0)
     
     legendary_frame = ttkb.Frame(record_card)
     legendary_frame.pack(fill=X, pady=4)
     
-    legendary_label = ttkb.Label(legendary_frame, text="传说/传奇鱼自动截屏", font=("Segoe UI", 9), bootstyle="info")
+    legendary_label = ttkb.Label(legendary_frame, text="传奇鱼自动截屏", font=("Segoe UI", 9), bootstyle="info")
     legendary_label.pack(side=LEFT, padx=(0, 8))
     
     legendary_btn_frame = ttkb.Frame(legendary_frame)
@@ -2669,7 +2669,7 @@ def create_gui():
     uncommon_var = ttkb.StringVar(value="🟢 非凡: 0 (0.00%)")
     rare_var = ttkb.StringVar(value="🔵 稀有: 0 (0.00%)")
     epic_var = ttkb.StringVar(value="🟣 史诗: 0 (0.00%)")
-    legendary_var = ttkb.StringVar(value="🟡 传说: 0 (0.00%)")
+    legendary_var = ttkb.StringVar(value="🟡 传奇: 0 (0.00%)")
     total_var = ttkb.StringVar(value="📝 总计: 0 条")
     
     # 品质统计布局 - 更美观的网格布局
@@ -2693,7 +2693,7 @@ def create_gui():
     rare_label = ttkb.Label(row1_frame, textvariable=rare_var, foreground="#60A5FA", font=("Segoe UI", 9, "bold"))
     rare_label.pack(side=LEFT, padx=12, pady=3, expand=YES)
     
-    # 第二行：史诗、传说、总计
+    # 传奇
     row2_frame = ttkb.Frame(quality_stats_frame)
     row2_frame.pack(fill=X, pady=(5, 0))
     
@@ -2770,16 +2770,16 @@ def create_gui():
     tree_scroll.pack(side=RIGHT, fill=Y)
 
     # 配置品质颜色标签（背景色和前景色）- 优化配色方案
-    # 标准-浅灰色, 非凡-清新绿, 稀有-海洋蓝, 史诗-优雅紫, 传说/传奇-尊贵金
+    # 标准-浅灰色, 非凡-清新绿, 稀有-海洋蓝, 史诗-优雅紫, 传奇-尊贵金
     # 文字颜色统一为黑色，背景色使用更鲜艳的颜色
     quality_colors = {
         # 将标准和繁体标准合并为同一颜色配置
         **{q: ("#FFFFFF", "#000000") for q in ["标准", "標準"]},
         "非凡": ("#2ECC71", "#000000"),
         "稀有": ("#1E90FF", "#FFFFFF"),
-        "史诗": ("#9B59B6", "#FFFFFF"),
-        # 将传说、傳說、传奇、傳奇合并为同一颜色配置
-        **{q: ("#F1C40F", "#000000") for q in ["传说", "傳說", "传奇", "傳奇"]}
+        **{q: ("#9B59B6", "#FFFFFF") for q in ["史诗", "史詩"]},
+        # 将传奇、傳奇合并为同一颜色配置
+        **{q: ("#F1C40F", "#000000") for q in ["传奇","传说", "傳奇"]}
     }
     
     for quality, (bg, fg) in quality_colors.items():
@@ -2848,11 +2848,14 @@ def create_gui():
             for record in all_records:
                 # 品质筛选
                 if quality_filter != "全部":
-                    if quality_filter == "传说":
-                        if record.quality not in ["传说", "传奇", "傳說", "傳奇"]:
+                    if quality_filter == "传奇":
+                        if record.quality not in [ "传奇","傳奇"]:
                             continue
                     elif quality_filter == "标准":
-                        if record.quality not in ["标准", "標準"]:
+                        if record.quality not in ["标准","標準"]:
+                            continue
+                    elif quality_filter == "史诗":
+                        if record.quality not in ["史詩","史诗"]:
                             continue
                     else:
                         if record.quality != quality_filter:
@@ -2873,16 +2876,17 @@ def create_gui():
             "非凡": 0,
             "稀有": 0,
             "史诗": 0,
-            "传说": 0,
-            "传奇": 0
+            "传奇": 0,
         }
         
         for record in all_records:
             quality = record.quality
             # 处理繁体中文品质，映射到简体中文键
-            if quality == "傳說":
-                quality = "传说"
-            elif quality == "傳奇":
+            if quality in ["傳奇", "傅奇"]:
+                quality = "传奇"
+            elif quality == "史詩":
+                quality = "史诗"
+            elif quality == "传说":
                 quality = "传奇"
             elif quality == "標準":
                 quality = "标准"
@@ -2890,8 +2894,8 @@ def create_gui():
             if quality in quality_counts:
                 quality_counts[quality] += 1
         
-        # 合并传说和传奇的计数（因为它们是同一品质的不同名称）
-        total_legendary = quality_counts["传说"] + quality_counts["传奇"]
+        # 合并传奇和传说的计数（因为它们是同一品质的不同名称）
+        total_legendary = quality_counts["传奇"]
         
         # 计算概率并更新标签
         def calc_percentage(count):
@@ -2903,7 +2907,7 @@ def create_gui():
             "非凡": "🟢",
             "稀有": "🔵",
             "史诗": "🟣",
-            "传说": "🟡"
+            "传奇": "🟡"
         }
         
         # 格式化显示，优化样式和颜色
@@ -2914,7 +2918,7 @@ def create_gui():
                 "非凡": "#10B981",
                 "稀有": "#3B82F6",
                 "史诗": "#8B5CF6",
-                "传说": "#F59E0B"
+                "传奇": "#F59E0B"
             }
             color = color_map.get(name, "#64748B")
             return f"{icon} {name}: <span style='color:{color}; font-weight:bold;'>{count}</span> (<span style='color:{color};'>{percentage:.2f}%</span>)"
@@ -2924,7 +2928,7 @@ def create_gui():
         uncommon_var.set(f"🟢 非凡: {quality_counts['非凡']} ({calc_percentage(quality_counts['非凡']):.2f}%)")
         rare_var.set(f"🔵 稀有: {quality_counts['稀有']} ({calc_percentage(quality_counts['稀有']):.2f}%)")
         epic_var.set(f"🟣 史诗: {quality_counts['史诗']} ({calc_percentage(quality_counts['史诗']):.2f}%)")
-        legendary_var.set(f"🟡 传说: {total_legendary} ({calc_percentage(total_legendary):.2f}%)")
+        legendary_var.set(f"🟡 传奇: {total_legendary} ({calc_percentage(total_legendary):.2f}%)")
         
         # 根据视图模式更新总计显示
         total_icon = "📊"
@@ -2941,7 +2945,7 @@ def create_gui():
             time_display = record.timestamp if record.timestamp else "未知时间"
 
             # 根据品质确定标签（用于显示颜色）
-            quality_tag = record.quality if record.quality in ["标准", "非凡", "稀有", "史诗", "传说", "传奇", "標準", "傳說", "傳奇"] else "标准"
+            quality_tag = record.quality if record.quality in ["标准", "非凡", "稀有", "史诗", "史詩","传奇", "標準", "傳奇"] else "标准"
 
             fish_tree.insert("", "end", values=(
                 time_display,
@@ -3196,7 +3200,7 @@ def create_gui():
 
     version_label = ttkb.Label(
         left_status_frame,
-        text="v.2.9.1 | PartyFish",
+        text="v.2.9.1-bata.1 | PartyFish",
         bootstyle="light",
         font=("Segoe UI", 8, "bold")
     )
@@ -3662,18 +3666,18 @@ FISH_RECORD_FILE = "./fish_records.txt"
 # 鱼信息识别区域（2K分辨率基准值）
 FISH_INFO_REGION_BASE = (915, 75, 1640, 225)  # 左上角x, y, 右下角x, y
 
-# 品质等级定义（包含"传奇"作为"传说"的别名，部分游戏版本可能使用不同名称）
-QUALITY_LEVELS = ["标准", "非凡", "稀有", "史诗", "传说", "传奇", "標準", "傳說", "傳奇"]
+# 品质等级定义（包含"传奇"的别名，部分游戏版本可能使用不同名称）
+QUALITY_LEVELS = ["标准", "非凡", "稀有", "史诗", "史詩", "传奇", "標準",  "傳奇", "傅奇"]
 # GUI专用品质列表，不包含"传奇"选项，避免在GUI筛选中显示
-GUI_QUALITY_LEVELS = ["标准", "非凡", "稀有", "史诗", "传说"]
+GUI_QUALITY_LEVELS = ["标准", "非凡", "稀有", "史诗", "传奇"]
 QUALITY_COLORS = {
  # 将标准和繁体标准合并为同一图标配置
     **{q: "⚪" for q in ["标准", "標準"]},
     "非凡": "🟢",
     "稀有": "🔵",
-    "史诗": "🟣",
-# 将传说、传奇、傳說、傳奇合并为同一图标配置
-    **{q: "🟡" for q in ["传说", "传奇", "傳說", "傳奇"]}  # 传奇与传说同级，使用相同图标
+    **{q: "🟣" for q in ["史詩", "史诗"]},
+# 将传奇、傳奇、傅奇合并为同一图标配置
+    **{q: "🟡" for q in ["传奇", "傳奇", "傅奇"]}  # 传奇与傳奇、傅奇同级，使用相同图标
 }
 
 # 当前会话数据
@@ -3935,10 +3939,10 @@ def recognize_fish_info_ocr(img):
 
 
             # 识别鱼名 - 优先匹配"你钓到了XXX"或"首次捕获XXX"格式（支持简繁体）
-            # 优化正则表达式，移除重复的品质词匹配
+            # 优化正则表达式，处理OCR可能将"钓"识别为"约"的情况
             fish_name_patterns = [
-             r'(?:你[钓釣]到了|首次捕[获獲]|[钓釣]到了|捕[获獲])\s*[「【\[]?\s*([^「」【】\[\]]+?)\s*[」】\]]?\s*(?:[标標]准|非凡|稀有|史诗|传说|傳說|传奇|傳奇|$)'
-            ]
+             r'(?:你?[钓釣約]到了|首次?捕[获獲])\s*[「【\[]?\s*(.+?)\s*[」】\]]?\s*(?:[标標][准準]|非凡|稀有|史[诗詩]|传奇|傳奇|[傳傅]奇)?$'
+    ]
 
             for pattern in fish_name_patterns:
                 match = re.search(pattern, full_text)
@@ -3946,17 +3950,25 @@ def recognize_fish_info_ocr(img):
                     extracted_name = match.group(1).strip()
                     # 清理鱼名中的数字、单位和特殊字符
                     extracted_name = re.sub(r'\d+\.?\d*\s*(kg|g|千克|克|公斤|KG|G)?', '', extracted_name, flags=re.IGNORECASE)
-                    extracted_name = re.sub(r'[^\u4e00-\u9fa5a-zA-Z\s]', '', extracted_name)
-                    extracted_name = extracted_name.strip()
+                    # 清理鱼名中可能包含的品质词
+                    for quality in QUALITY_LEVELS:
+                        if quality in extracted_name:
+                            extracted_name = extracted_name.replace(quality, ' ')
+                    extracted_name = re.sub(r'[^\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaffa-zA-Z\s]', '', extracted_name)
+                    extracted_name = re.sub(r'\s+', ' ', extracted_name).strip()
                     if extracted_name and len(extracted_name) >= 2:
                         fish_name = extracted_name
-                        break
+                        # 特别处理美髯公，确保能被正确识别
+                        cleaned_fish_name = fish_name.replace(' ', '')
+                if '美髯公' in cleaned_fish_name or (('美' in cleaned_fish_name) and ('公' in cleaned_fish_name) and len(cleaned_fish_name) <= 3):
+                    fish_name = '美髯公'
+                break
 
             # 如果上述模式都没匹配到，尝试备用方案
             if not fish_name:
                 name_text = full_text
                 # 移除常见前缀（支持简繁体）
-                prefixes_to_remove = ['你钓到了', '你釣到了', '首次捕获', '首次捕獲', '钓到了', '釣到了', '捕获', '捕獲', '你钓到', '你釣到', '钓到', '釣到']
+                prefixes_to_remove = [r'你?[钓釣約](?:到了|到)|(?:首次)?捕[获獲]']
                 for prefix in prefixes_to_remove:
                     name_text = name_text.replace(prefix, ' ')
                 # 移除所有品质词
@@ -3964,13 +3976,56 @@ def recognize_fish_info_ocr(img):
                     name_text = name_text.replace(quality, ' ')
                 # 移除数字和单位
                 name_text = re.sub(r'\d+\.?\d*\s*(kg|g|千克|克|公斤|KG|G)?', '', name_text, flags=re.IGNORECASE)
-                # 清理特殊字符，保留中文和英文
-                name_text = re.sub(r'[^\u4e00-\u9fa5a-zA-Z]', ' ', name_text)
-                # 取最长的连续中文词作为鱼名
-                chinese_words = re.findall(r'[\u4e00-\u9fa5]{2,}', name_text)
-                if chinese_words:
-                    # 选择最长的词作为鱼名
-                    fish_name = max(chinese_words, key=len)
+                # 清理特殊字符，保留中文和英文（包括繁体）
+                name_text = re.sub(r'[^\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaffa-zA-Z\s]', ' ', name_text)
+                # 移除多余空格
+                name_text = re.sub(r'\s+', ' ', name_text).strip()
+                
+                # 改进的鱼名提取逻辑
+                # 1. 尝试直接使用清理后的文本作为鱼名
+                if name_text and len(name_text) >= 2:
+                    fish_name = name_text
+                    # 特别处理美髯公，确保能被正确识别
+                    cleaned_fish_name = fish_name.replace(' ', '')
+                    if '美髯公' in cleaned_fish_name or (('美' in cleaned_fish_name) and ('公' in cleaned_fish_name) and len(cleaned_fish_name) <= 3):
+                        fish_name = '美髯公'
+
+                # 2. 如果直接使用不行，尝试提取连续的中文词
+                if not fish_name:
+                    # 取最长的连续中文词作为鱼名（支持繁体）
+                    chinese_words = re.findall(r'[\u4e00-\u9fff]{2,}', name_text)
+                    if chinese_words:
+                        # 选择最长的词作为鱼名
+                        fish_name = max(chinese_words, key=len)
+                        # 特别处理美髯公，确保能被正确识别
+                        cleaned_fish_name = fish_name.replace(' ', '')
+                        if '美髯公' in cleaned_fish_name or (('美' in cleaned_fish_name) and ('公' in cleaned_fish_name) and len(cleaned_fish_name) <= 3):
+                            fish_name = '美髯公'
+                        
+            # 如果还是没匹配到，尝试直接从完整文本中提取鱼名
+            if not fish_name:
+                # 移除品质词和重量
+                clean_text = full_text
+                for quality in QUALITY_LEVELS:
+                    clean_text = clean_text.replace(quality, ' ')
+                # 移除数字和单位
+                weight_pattern = r'\d+\.?\d*\s*(kg|g|千克|克|公斤|KG|G)?'
+                clean_text = re.sub(weight_pattern, '', clean_text, flags=re.IGNORECASE)
+                # 移除前缀
+                for prefix in prefixes_to_remove:
+                    clean_text = clean_text.replace(prefix, ' ')
+                # 清理特殊字符
+                clean_text = re.sub(r'[^\u3400-\u4dbf\u4e00-\u9fff\uf900-\ufaffa-zA-Z\s]', ' ', clean_text)
+                # 移除多余空格
+                clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+                # 直接使用清理后的文本作为鱼名（如果长度合适）
+                if clean_text and len(clean_text) >= 2:
+                    fish_name = clean_text
+                    # 特别处理美髯公，确保能被正确识别
+                    cleaned_fish_name = fish_name.replace(' ', '')
+                    # 特别处理各种鱼名，确保能被正确识别
+                    if '美髯公' in cleaned_fish_name or (('美' in cleaned_fish_name) and ('公' in cleaned_fish_name) and len(cleaned_fish_name) <= 3):
+                        fish_name = '美髯公'
         
         # 调试信息：记录OCR识别结果和详细的鱼信息识别
         if debug_mode:
@@ -4131,9 +4186,9 @@ def record_caught_fish():
     try:
         # 创建记录
         with fish_record_lock:
-            # 合并"传奇"和"传说"品质，统一使用"传说"（包含繁体）
-            if fish_quality in ["传奇", "傳奇", "傳說"]:
-                fish_quality = "传说"
+            # 合并"传奇"和"傳奇"品质，统一使用"传奇"（包含繁体）
+            if fish_quality in ["传奇", "傳奇"]:
+                fish_quality = "传奇"
             fish = FishRecord(fish_name, fish_quality, fish_weight)
             current_session_fish.append(fish)
             all_fish_records.append(fish)
@@ -4163,15 +4218,15 @@ def record_caught_fish():
         quality_emoji = QUALITY_COLORS.get(fish.quality, "⚪")
         print(f"🐟 [钓到] {quality_emoji} {fish.name} | 品质: {fish.quality} | 重量: {fish.weight}")
 
-        # 传说/传奇鱼自动截屏
-        if legendary_screenshot_enabled and fish.quality in ["传说", "传奇", "傳說", "傳奇"]:
+        # 传奇鱼自动截屏
+        if legendary_screenshot_enabled and fish.quality in [ "传奇", "傳奇"]:
             try:
-                # 调试信息：记录开始传说鱼截屏
+                # 调试信息：记录开始传奇鱼截屏
                 if debug_mode:
                     debug_info = {
                         "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
                         "action": "fish_record_screenshot_start",
-                        "message": "开始传说鱼自动截屏"
+                        "message": "开始传奇鱼自动截屏"
                     }
                     add_debug_info(debug_info)
                 
@@ -4210,26 +4265,26 @@ def record_caught_fish():
                     
                     # 保存截图
                     mss.tools.to_png(screenshot.rgb, screenshot.size, output=screenshot_path)
-                    print(f"📸 [截屏] 传说鱼已自动保存到主显示器截图: {screenshot_path}")
+                    print(f"📸 [截屏] 传奇鱼已自动保存到主显示器截图: {screenshot_path}")
                     
-                    # 调试信息：记录传说鱼截屏成功
+                    # 调试信息：记录传奇鱼截屏成功
                     if debug_mode:
                         debug_info = {
                             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
                             "action": "fish_record_screenshot_success",
-                            "message": "传说鱼自动截屏成功",
+                            "message": "传奇鱼自动截屏成功",
                             "screenshot_path": screenshot_path,
                             "monitor_info": monitor
                         }
                         add_debug_info(debug_info)
             except Exception as e:
                 print(f"❌ [错误] 截图失败: {e}")
-                # 调试信息：记录传说鱼截屏失败
+                # 调试信息：记录传奇鱼截屏失败
                 if debug_mode:
                     debug_info = {
                         "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
                         "action": "fish_record_screenshot_failed",
-                        "message": "传说鱼自动截屏失败",
+                        "message": "传奇鱼自动截屏失败",
                         "error": str(e),
                         "exception_type": type(e).__name__
                     }
@@ -4293,15 +4348,18 @@ def search_fish_records(keyword="", quality_filter="全部", use_session=True):
 
         filtered = []
         for record in records:
-            # 品质筛选 - 合并"传说"和"传奇"，以及"标准"和"標準"
+            # 品质筛选 - 合并"传奇"和"传奇"，以及"标准"和"標準"
             if quality_filter != "全部":
-                if quality_filter == "传说":
-                    # 筛选传说时也包含传奇
-                    if record.quality not in ["传说", "传奇", "傳說", "傳奇"]:
+                if quality_filter == "传奇":
+                    # 筛选传奇时也包含传奇
+                    if record.quality not in ["传奇", "傳奇"]:
                         continue
                 elif quality_filter == "标准":
                     # 筛选标准时也包含繁体標準
                     if record.quality not in ["标准", "標準"]:
+                        continue
+                elif quality_filter == "史诗":
+                    if record.quality not in ["史詩", "史诗"]:
                         continue
                 else:
                     # 其他品质正常筛选
@@ -5394,7 +5452,7 @@ if __name__ == "__main__":
     print()
     print("╔" + "═" * 50 + "╗")
     print("║" + " " * 50 + "║")
-    print("║     🎣  PartyFish 自动钓鱼助手  v.2.9.1".ljust(44)+"║")
+    print("║     🎣  PartyFish 自动钓鱼助手  v.2.9.1-bata.1".ljust(44)+"║")
     print("║" + " " * 50 + "║")
     print("╠" + "═" * 50 + "╣")
     print(f"║  📺 当前分辨率: {CURRENT_SCREEN_WIDTH}×{CURRENT_SCREEN_HEIGHT}".ljust(45)+"║")
