@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/Version-v2.0-orange.svg)
+![Version](https://img.shields.io/badge/Version-v2.9.2-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-lightgrey.svg)
 ![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)
 ![Game](https://img.shields.io/badge/Game-猛兽派对%20Party%20Animals-blue.svg)
