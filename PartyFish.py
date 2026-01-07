@@ -673,6 +673,7 @@ def save_parameters():
         "custom_width": TARGET_WIDTH,
         "custom_height": TARGET_HEIGHT,
         "hotkey": hotkey_name,
+        "uno_hotkey": uno_hotkey_name,
         "record_fish_enabled": record_fish_enabled,
         "legendary_screenshot_enabled": legendary_screenshot_enabled,
         "font_size": font_size,
@@ -749,6 +750,19 @@ def load_parameters():
                 hotkey_name = "F2"
                 hotkey_modifiers = set()
                 hotkey_main_key = keyboard.Key.f2
+            # 加载UNO热键设置
+            saved_uno_hotkey = params.get("uno_hotkey", "F3")
+            try:
+                uno_modifiers, uno_main_key, uno_main_key_name = parse_hotkey_string(saved_uno_hotkey)
+                if uno_main_key is not None:
+                    uno_hotkey_name = saved_uno_hotkey
+                    uno_hotkey_modifiers = uno_modifiers
+                    uno_hotkey_main_key = uno_main_key
+            except Exception:
+                # 解析失败，使用默认值
+                uno_hotkey_name = "F3"
+                uno_hotkey_modifiers = set()
+                uno_hotkey_main_key = keyboard.Key.f3
 
         # 根据分辨率选择设置目标分辨率
         if resolution_choice == "1080P":
@@ -921,6 +935,21 @@ def update_parameters(
                     except Exception:
                         pass  # 保持原有热键设置
 
+            # 更新UNO热键设置
+            if 'uno_hotkey_var' in globals() and uno_hotkey_var is not None:
+                new_uno_hotkey = uno_hotkey_var.get()
+                if new_uno_hotkey:
+                    try:
+                        uno_modifiers, uno_main_key, uno_main_key_name = parse_hotkey_string(
+                            new_uno_hotkey
+                        )
+                        if uno_main_key is not None:
+                            uno_hotkey_name = new_uno_hotkey
+                            uno_hotkey_modifiers = uno_modifiers
+                            uno_hotkey_main_key = uno_main_key
+                    except Exception:
+                        pass  # 保持原有UNO热键设置
+
             # 更新分辨率设置
             resolution_choice = resolution_var.get()
             if resolution_choice == "1080P":
@@ -932,7 +961,7 @@ def update_parameters(
             elif resolution_choice == "current":
                 # 使用当前系统分辨率
                 TARGET_WIDTH, TARGET_HEIGHT = get_current_screen_resolution()
-                # 更新输入框显示，确保用户看到实际应用的值
+                # 更新输入框显示
                 custom_width_var.set(str(TARGET_WIDTH))
                 custom_height_var.set(str(TARGET_HEIGHT))
             elif resolution_choice == "自定义":
@@ -948,7 +977,7 @@ def update_parameters(
                 TARGET_WIDTH = max(min_width, min(max_width, width))
                 TARGET_HEIGHT = max(min_height, min(max_height, height))
 
-                # 更新输入框显示，确保用户看到实际应用的值
+                # 更新输入框显示
                 custom_width_var.set(str(TARGET_WIDTH))
                 custom_height_var.set(str(TARGET_HEIGHT))
 
@@ -1093,7 +1122,7 @@ def show_debug_window():
             img = capture_fish_info_region(temp_scr)
             if img is not None:
                 fish_name, fish_quality, fish_weight = recognize_fish_info_ocr(img)
-                # 添加调试信息，通知用户手动触发成功
+                # 添加调试信息，记录OCR识别结果
                 debug_info = {
                     "timestamp": datetime.datetime.now().strftime(
                         "%Y-%m-%d %H:%M:%S.%f"
@@ -1110,7 +1139,7 @@ def show_debug_window():
                 }
                 add_debug_info(debug_info)
             else:
-                # 添加调试信息，通知用户OCR识别失败
+                # 添加调试信息，通知OCR识别失败
                 debug_info = {
                     "timestamp": datetime.datetime.now().strftime(
                         "%Y-%m-%d %H:%M:%S.%f"
@@ -1993,7 +2022,7 @@ def create_gui():
     # 时间抖动说明文字 - 优化样式
     jitter_info_label = ttkb.Label(
         jitter_card,
-        text="在抛竿和收杆时间上添加随机波动，避免检测",
+        text="随机波动避免检测",
         bootstyle="info",
         font=("Segoe UI", 8),
     )
@@ -2028,7 +2057,7 @@ def create_gui():
     # ==================== 鱼桶满检测设置卡片 ====================
     bucket_card = ttkb.Labelframe(
     left_content_frame,
-    text=" 🪣 鱼桶满了/没鱼饵了检测 ",
+    text=" 🪣 鱼桶满/没鱼饵检测 ",
     padding=12,
     bootstyle="warning"
     )
@@ -2037,13 +2066,40 @@ def create_gui():
     # 音效开关
     global fish_bucket_sound_enabled
     fish_bucket_sound_var = ttkb.BooleanVar(value=fish_bucket_sound_enabled)
-    fish_bucket_sound_check = ttkb.Checkbutton(
-    bucket_card,
-    text="启用鱼桶满了/没鱼饵警告音效",
-    variable=fish_bucket_sound_var,
-    bootstyle="warning"
+    
+    # 创建音效开关水平框架
+    sound_frame = ttkb.Frame(bucket_card)
+    sound_frame.pack(fill=X, pady=(0, 4))
+    
+    # 音效开关标签
+    sound_label = ttkb.Label(sound_frame, text="启用警告音效", bootstyle="warning", font=('Segoe UI', 9))
+    sound_label.pack(side=LEFT, padx=(0, 5), pady=0)
+    
+    # 创建一个框架来容纳单选按钮，并将其靠右显示
+    sound_rb_frame = ttkb.Frame(sound_frame)
+    sound_rb_frame.pack(side=RIGHT, padx=0, pady=0)
+    
+    # "是"单选按钮
+    sound_yes = ttkb.Radiobutton(
+        sound_rb_frame,
+        text="是",
+        variable=fish_bucket_sound_var,
+        value=True,
+        bootstyle="success-outline-toolbutton",
+        cursor="hand2"
     )
-    fish_bucket_sound_check.pack(anchor=W, pady=(0, 4))
+    sound_yes.pack(side=LEFT, padx=3)
+    
+    # "否"单选按钮
+    sound_no = ttkb.Radiobutton(
+        sound_rb_frame,
+        text="否",
+        variable=fish_bucket_sound_var,
+        value=False,
+        bootstyle="danger-outline-toolbutton",
+        cursor="hand2"
+    )
+    sound_no.pack(side=LEFT, padx=3)
 
     def toggle_fish_bucket_sound():
         """切换鱼桶满了/没鱼饵警告音效开关"""
@@ -2052,7 +2108,9 @@ def create_gui():
         # 保存设置
         save_parameters()
 
-    fish_bucket_sound_check.configure(command=toggle_fish_bucket_sound)
+    # 绑定单选按钮事件
+    sound_yes.configure(command=toggle_fish_bucket_sound)
+    sound_no.configure(command=toggle_fish_bucket_sound)
 
     # 运行模式选择
     global bucket_detection_mode
@@ -2061,41 +2119,42 @@ def create_gui():
     mode_frame = ttkb.Frame(bucket_card)
     mode_frame.pack(fill=X, pady=(8, 0))
     
-    ttkb.Label(mode_frame, text="运行模式:", bootstyle="warning", font=("Segoe UI", 9, "bold")).pack(anchor=W, pady=(0, 4))
+    ttkb.Label(mode_frame, text="运行模式:", bootstyle="warning", font=("Segoe UI", 9, "bold")).pack(anchor=CENTER, pady=(0, 4))
     
-    # 水平框架用于放置单选按钮
-    rb_frame = ttkb.Frame(mode_frame)
+    # 创建按钮组容器
+    rb_frame = ttkb.Frame(mode_frame, padding=2)
     rb_frame.pack(fill=X, pady=(0, 4))
     
-    # 模式1：自动暂停
+    # 创建按钮式单选按钮组
     mode1_rb = ttkb.Radiobutton(
         rb_frame,
         text="1.自动暂停",
         variable=bucket_mode_var,
         value="mode1",
-        bootstyle="warning"
+        bootstyle="primary toolbutton",
+        cursor="hand2"
     )
-    mode1_rb.pack(side=LEFT, padx=(0, 15))
+    mode1_rb.pack(fill=X, pady=1, padx=2)
     
-    # 模式2：F键+左键模式
     mode2_rb = ttkb.Radiobutton(
         rb_frame,
         text="2.自动挂机",
         variable=bucket_mode_var,
         value="mode2",
-        bootstyle="warning"
+        bootstyle="primary toolbutton",
+        cursor="hand2"
     )
-    mode2_rb.pack(side=LEFT, padx=(0, 15))
+    mode2_rb.pack(fill=X, pady=1, padx=2)
     
-    # 模式3：仅F键模式
     mode3_rb = ttkb.Radiobutton(
         rb_frame,
         text="3.收杆模式",
         variable=bucket_mode_var,
         value="mode3",
-        bootstyle="warning"
+        bootstyle="primary toolbutton",
+        cursor="hand2"
     )
-    mode3_rb.pack(side=LEFT)
+    mode3_rb.pack(fill=X, pady=1, padx=2)
     
     def on_bucket_mode_change():
         """切换鱼桶满检测模式"""
@@ -2110,11 +2169,11 @@ def create_gui():
     # 说明文字
     info_label = ttkb.Label(
     bucket_card,
-    text="当检测到时根据选择的模式执行相应操作",
+    text="按照选择的模式执行",
     bootstyle="info",
     font=("Segoe UI", 8)
     )
-    info_label.pack(anchor=W, pady=(4, 0))
+    info_label.pack(anchor=CENTER, pady=(4, 0))
     # ==================== 热键设置卡片 ====================
     hotkey_card = ttkb.Labelframe(
         left_content_frame, text=" ⌨️ 热键设置 ", padding=12, bootstyle="primary"
@@ -2278,9 +2337,11 @@ def create_gui():
         hotkey_tip_label.configure(text="5秒内按键，或再次点击取消")
         hotkey_tip_label.pack(pady=(2, 0))  # 显示提示
 
-        # 启动键盘监听器
+        # 启动键盘监听器，设置suppress=False允许事件传递
         capture_listener[0] = keyboard.Listener(
-            on_press=on_capture_key_press, on_release=on_capture_key_release
+            on_press=on_capture_key_press, 
+            on_release=on_capture_key_release,
+            suppress=False
         )
         capture_listener[0].start()
 
@@ -2595,21 +2656,221 @@ def create_gui():
     )
     legendary_no.pack(side=LEFT, padx=5)
 
+    # ==================== UNO UI ====================
+    # 添加UNO的UI元素
+    uno_card = ttkb.Labelframe(
+        left_content_frame, text=" 🎮 UNO 设置 ", padding=12, bootstyle="primary"
+    )
+    uno_card.pack(fill=X, pady=(0, 8))
+    
+    # UNO描述文本
+    uno_desc = ttkb.Label(
+        uno_card,
+        text="这是UNO的UI界面，目前仅显示UI元素，暂未实现功能。",
+        font=("Segoe UI", 9),
+        bootstyle="primary",
+        wraplength=180
+    )
+    uno_desc.pack(pady=(0, 8))
+    
+    # UNO开关
+    uno_var = ttkb.IntVar(value=0)
+    
+    uno_frame = ttkb.Frame(uno_card)
+    uno_frame.pack(fill=X, pady=4)
 
 
+    
+    uno_btn_frame = ttkb.Frame(uno_frame)
+    uno_btn_frame.pack(side=RIGHT)
 
+    # ==================== UNO热键设置 ====================
+    # UNO热键显示变量
+    uno_hotkey_var = ttkb.StringVar(value=uno_hotkey_name)
 
+    # UNO热键捕获状态
+    uno_is_capturing_hotkey = [False]  # 使用列表以便在闭包中修改
+    uno_captured_modifiers = [set()]
+    uno_captured_main_key = [None]
+    uno_captured_main_key_name = [""]
+    uno_capture_listener = [None]
 
+    uno_hotkey_frame = ttkb.Frame(uno_card)
+    uno_hotkey_frame.pack(fill=X, pady=4)
 
+    uno_hotkey_label = ttkb.Label(
+        uno_hotkey_frame,
+        text="UNO功能热键",
+        font=("Segoe UI", 9, "bold"),
+        bootstyle="primary",
+    )
+    uno_hotkey_label.pack(side=LEFT, padx=(0, 8))
 
+    # UNO热键显示按钮（点击后进入捕获模式）
+    uno_hotkey_btn = ttkb.Button(
+        uno_hotkey_frame, text=uno_hotkey_name, bootstyle="primary", width=12
+    )
+    uno_hotkey_btn.pack(side=RIGHT, padx=(8, 0))
 
+    # UNO热键信息提示
+    uno_hotkey_info_label = ttkb.Label(
+        uno_card,
+        text=f"按 {uno_hotkey_name} 触发UNO功能 | 点击按钮修改",
+        bootstyle="primary",
+        font=("Segoe UI", 8, "bold"),
+    )
+    uno_hotkey_info_label.pack(pady=(4, 0), padx=4)
 
+    # UNO热键提示标签（用于捕获模式显示）
+    uno_hotkey_tip_label = ttkb.Label(
+        uno_card, text="", bootstyle="secondary", font=("Segoe UI", 8)
+    )
 
+    def uno_stop_hotkey_capture():
+        """停止UNO热键捕获"""
+        uno_is_capturing_hotkey[0] = False
+        # 停止键盘监听器
+        if uno_capture_listener[0] is not None:
+            try:
+                uno_capture_listener[0].stop()
+            except:
+                pass
+            uno_capture_listener[0] = None
+        # 停止鼠标监听器
+        if "uno_mouse_capture_listener" in globals():
+            mouse_listener = globals()["uno_mouse_capture_listener"]
+            if mouse_listener is not None:
+                try:
+                    mouse_listener.stop()
+                except:
+                    pass
+            globals()["uno_mouse_capture_listener"] = None
+        uno_hotkey_btn.configure(bootstyle="info-outline")
+        uno_hotkey_tip_label.pack_forget()  # 隐藏提示
+        uno_hotkey_info_label.configure(
+            text=f"按 {uno_hotkey_var.get()} 触发UNO功能 | 点击按钮修改"
+        )
 
+    def uno_on_capture_key_press(key):
+        """捕获UNO热键按下事件"""
+        if not uno_is_capturing_hotkey[0]:
+            return False  # 停止监听
 
+        # 检查是否是修饰键
+        if key in MODIFIER_KEYS:
+            uno_captured_modifiers[0].add(MODIFIER_KEYS[key])
+            # 更新按钮显示
+            display_parts = []
+            if "ctrl" in uno_captured_modifiers[0]:
+                display_parts.append("Ctrl")
+            if "alt" in uno_captured_modifiers[0]:
+                display_parts.append("Alt")
+            if "shift" in uno_captured_modifiers[0]:
+                display_parts.append("Shift")
+            display_parts.append("...")
+            root.after(0, lambda: uno_hotkey_btn.configure(text="+".join(display_parts)))
+            return True
 
+        # 这是主按键
+        uno_captured_main_key[0] = key
+        uno_captured_main_key_name[0] = key_to_name(key)
 
+        # 生成热键字符串
+        new_hotkey = format_hotkey_display(
+            uno_captured_modifiers[0], uno_captured_main_key_name[0]
+        )
 
+        # 更新GUI
+        def update_gui():
+            uno_hotkey_var.set(new_hotkey)
+            uno_hotkey_btn.configure(text=new_hotkey)
+            uno_hotkey_info_label.configure(text=f"新热键: {new_hotkey} | 点击保存生效")
+            uno_stop_hotkey_capture()
+
+        root.after(0, update_gui)
+        return False  # 停止监听
+
+    def uno_on_capture_key_release(key):
+        """捕获UNO热键释放事件"""
+        if not uno_is_capturing_hotkey[0]:
+            return False
+        # 释放修饰键时移除
+        if key in MODIFIER_KEYS:
+            uno_captured_modifiers[0].discard(MODIFIER_KEYS[key])
+        return True
+
+    def uno_on_capture_mouse_click(x, y, button, pressed):
+        """捕获UNO热键鼠标点击事件"""
+        if not uno_is_capturing_hotkey[0] or not pressed:
+            return
+
+        # 只允许鼠标侧键（x1, x2），禁用左右中键
+        if button not in [mouse.Button.x1, mouse.Button.x2]:
+            return
+
+        # 鼠标侧键作为主按键
+        uno_captured_main_key[0] = button
+        uno_captured_main_key_name[0] = key_to_name(button)
+
+        # 生成热键字符串
+        new_hotkey = format_hotkey_display(
+            uno_captured_modifiers[0], uno_captured_main_key_name[0]
+        )
+
+        # 更新GUI
+        def update_gui():
+            uno_hotkey_var.set(new_hotkey)
+            uno_hotkey_btn.configure(text=new_hotkey)
+            uno_hotkey_info_label.configure(text=f"新热键: {new_hotkey} | 点击保存生效")
+            uno_stop_hotkey_capture()
+
+        root.after(0, update_gui)
+
+    def uno_start_hotkey_capture():
+        """开始UNO热键捕获"""
+        if uno_is_capturing_hotkey[0]:
+            uno_stop_hotkey_capture()
+            return
+
+        # 重置捕获状态
+        uno_captured_modifiers[0] = set()
+        uno_captured_main_key[0] = None
+        uno_captured_main_key_name[0] = ""
+
+        uno_is_capturing_hotkey[0] = True
+
+        # 启动键盘监听器
+        uno_capture_listener[0] = keyboard.Listener(
+            on_press=uno_on_capture_key_press,
+            on_release=uno_on_capture_key_release,
+            suppress=False
+        )
+        uno_capture_listener[0].start()
+
+        # 启动鼠标监听器（用于检测侧键）
+        mouse_listener = mouse.Listener(
+            on_click=uno_on_capture_mouse_click,
+            suppress=False
+        )
+        mouse_listener.start()
+        globals()["uno_mouse_capture_listener"] = mouse_listener
+
+        # 更新UI
+        uno_hotkey_btn.configure(text="请按键...", bootstyle="warning")
+        uno_hotkey_info_label.configure(text="按下组合键（如Ctrl+F3）或单键/鼠标侧键")
+        uno_hotkey_tip_label.configure(text="5秒内按键，或再次点击取消")
+        uno_hotkey_tip_label.pack(pady=(2, 0))  # 显示提示
+
+        # 5秒后自动取消捕获
+        def auto_cancel():
+            if uno_is_capturing_hotkey[0]:
+                root.after(0, lambda: uno_hotkey_btn.configure(text=uno_hotkey_var.get()))
+                uno_stop_hotkey_capture()
+
+        root.after(5000, auto_cancel)
+
+    # 设置UNO热键按钮的点击事件
+    uno_hotkey_btn.configure(command=uno_start_hotkey_capture)
 
     # ==================== 右侧面板（钓鱼记录区域） ====================
     right_panel = ttkb.Frame(main_frame)
@@ -3133,7 +3394,7 @@ def create_gui():
 
     def clear_fish_records():
         """清空钓鱼记录"""
-        # 询问用户确认
+        # 询问确认
         use_session = view_mode.get() == "current"
         if use_session:
             confirm_text = "确定要清空本次钓鱼记录吗？"
@@ -5015,6 +5276,11 @@ hotkey_name = "F2"  # 默认热键显示名称
 hotkey_modifiers = set()  # 修饰键集合 (ctrl, alt, shift)
 hotkey_main_key = keyboard.Key.f2  # 主按键对象
 
+# UNO功能热键
+uno_hotkey_name = "F3"  # 默认UNO热键显示名称
+uno_hotkey_modifiers = set()  # UNO热键修饰键集合
+uno_hotkey_main_key = keyboard.Key.f3  # UNO热键主按键对象
+
 
 # 获取当前系统分辨率
 def get_current_screen_resolution():
@@ -5963,34 +6229,68 @@ def check_hotkey_match(key):
     """检查按键是否匹配热键"""
     # 比较主按键
     main_key_match = False
+    uno_key_match = False
 
     # 直接比较按键对象
     if key == hotkey_main_key:
         main_key_match = True
+    if key == uno_hotkey_main_key:
+        uno_key_match = True
+    
     # 虚拟键码比较
-    elif hasattr(key, "vk") and hasattr(hotkey_main_key, "vk"):
-        if key.vk is not None and hotkey_main_key.vk is not None:
-            main_key_match = key.vk == hotkey_main_key.vk
+    elif hasattr(key, "vk"):
+        # 检查主热键
+        if hasattr(hotkey_main_key, "vk") and hotkey_main_key.vk is not None:
+            if key.vk is not None:
+                main_key_match = key.vk == hotkey_main_key.vk
+        # 检查UNO热键
+        if hasattr(uno_hotkey_main_key, "vk") and uno_hotkey_main_key.vk is not None:
+            if key.vk is not None:
+                uno_key_match = key.vk == uno_hotkey_main_key.vk
+    
     # 字符键比较（忽略大小写）
-    elif hasattr(key, "char") and hasattr(hotkey_main_key, "char"):
-        if key.char and hotkey_main_key.char:
+    elif hasattr(key, "char") and key.char:
+        # 检查主热键
+        if hasattr(hotkey_main_key, "char") and hotkey_main_key.char:
             main_key_match = key.char.lower() == hotkey_main_key.char.lower()
+        # 检查UNO热键
+        if hasattr(uno_hotkey_main_key, "char") and uno_hotkey_main_key.char:
+            uno_key_match = key.char.lower() == uno_hotkey_main_key.char.lower()
+    
     # 鼠标按键比较
-    elif isinstance(key, mouse.Button) and isinstance(hotkey_main_key, mouse.Button):
-        main_key_match = key == hotkey_main_key
+    elif isinstance(key, mouse.Button):
+        # 检查主热键
+        if isinstance(hotkey_main_key, mouse.Button):
+            main_key_match = key == hotkey_main_key
+        # 检查UNO热键
+        if isinstance(uno_hotkey_main_key, mouse.Button):
+            uno_key_match = key == uno_hotkey_main_key
 
+    # 处理主热键匹配
     if main_key_match:
         # 检查修饰键是否匹配
         if current_modifiers == hotkey_modifiers:
             toggle_run()  # 暂停或恢复程序
             return
+    
+    # 处理UNO热键匹配
+    if uno_key_match:
+        # 检查修饰键是否匹配
+        if current_modifiers == uno_hotkey_modifiers:
+            print(f"🎮 [UNO] 热键 {uno_hotkey_name} 被触发")
+            # 这里可以添加UNO功能的具体实现
+            return
 
 
 def start_hotkey_listener():
     global listener, mouse_listener
-    # 启动键盘监听器
+    # 启动键盘监听器，设置suppress=False允许事件传递，确保全局监听
     if listener is None or not listener.running:
-        listener = keyboard.Listener(on_press=on_press, on_release=on_release)
+        listener = keyboard.Listener(
+            on_press=on_press, 
+            on_release=on_release,
+            suppress=False  # 不抑制事件，允许其他应用程序接收按键
+        )
         listener.daemon = True
         listener.start()
 
@@ -6000,7 +6300,10 @@ def start_hotkey_listener():
         or mouse_listener is None
         or not mouse_listener.running
     ):
-        mouse_listener = mouse.Listener(on_click=on_mouse_press)
+        mouse_listener = mouse.Listener(
+            on_click=on_mouse_press,
+            suppress=False  # 不抑制事件，允许其他应用程序接收鼠标事件
+        )
         mouse_listener.daemon = True
         mouse_listener.start()
 
