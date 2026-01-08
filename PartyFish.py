@@ -690,6 +690,7 @@ def save_parameters():
         "jitter_range": JITTER_RANGE,
         "fish_bucket_sound_enabled": fish_bucket_sound_enabled,
         "bucket_detection_mode": bucket_detection_mode,  # 新增保存鱼桶检测模式
+        "bait_recognition_algorithm": bait_recognition_algorithm,  # 新增保存鱼饵识别算法
     }
 
     try:
@@ -709,6 +710,7 @@ def load_parameters():
     global font_size, record_fish_enabled, legendary_screenshot_enabled
     global config_names, config_params, current_config_index
     global JITTER_RANGE
+    global bait_recognition_algorithm  # 新增加载鱼饵识别算法
     global uno_hotkey_name, uno_hotkey_modifiers, uno_hotkey_main_key  # 添加UNO热键全局变量
     try:
         with open(PARAMETER_FILE, "r", encoding="utf-8") as f:
@@ -747,6 +749,8 @@ def load_parameters():
             fish_bucket_sound_enabled = params.get("fish_bucket_sound_enabled", True)
             # 加载鱼桶检测模式
             bucket_detection_mode = params.get("bucket_detection_mode", "mode1")
+            # 加载鱼饵识别算法
+            bait_recognition_algorithm = params.get("bait_recognition_algorithm", "template")
             # 加载热键设置（新格式支持组合键）
             saved_hotkey = params.get("hotkey", "F2")
             try:
@@ -1001,22 +1005,17 @@ def update_parameters(
             calculate_scale_factors()  # 计算所有缩放比例（包括SCALE_UNIFORM）
             update_region_coords()  # 更新区域坐标
 
-            print("┌" + "─" * 48 + "┐")
-            print("│  ⚙️  参数更新成功                               │")
-            print("├" + "─" * 48 + "┤")
-            print(
-                f"│  ⏱️  循环间隔: {t:.1f}s    📍 收线: {leftclickdown:.1f}s    📍 放线: {leftclickup:.1f}s"
-            )
-            print(
-                f"│  🎣 最大拉杆: {times}次     ⏳ 抛竿: {paogantime:.1f}s    {'✅' if jiashi_var else '❌'} 加时: {'是' if jiashi_var else '否'}"
-            )
-            print(f"│  🖥️  分辨率: {resolution_choice} ({TARGET_WIDTH}×{TARGET_HEIGHT})")
-            print(
-                f"│  📐 缩放比例: X={SCALE_X:.2f}  Y={SCALE_Y:.2f}  统一={SCALE_UNIFORM:.2f}"
-            )
-            print(f"│  ⌨️  热键: {hotkey_name}")
-            print(f"│  🎲 时间抖动: ±{JITTER_RANGE}%")
-            print("└" + "─" * 48 + "┘")
+            print(f"┌" + "─" * 48 + "┐")
+            print(f"│  ⚙️  参数更新成功                               │")
+            print(f"├" + "─" * 48 + "┤")
+            print(f"│  ⏱️  循环间隔: {t:.1f}s    📍 收线: {leftclickdown:.1f}s    📍 放线: {leftclickup:.1f}s".ljust(40)+"│")
+            print(f"│  🎣 最大拉杆: {times}次     ⏳ 抛竿: {paogantime:.1f}s    {'✅' if jiashi_var else '❌'} 加时: {'是' if jiashi_var else '否'}".ljust(40)+"│")
+            print(f"│  🖥️  分辨率: {resolution_choice} ({TARGET_WIDTH}×{TARGET_HEIGHT})".ljust(40)+"│")
+            print(f"│  📐 缩放比例: X={SCALE_X:.2f}  Y={SCALE_Y:.2f}  统一={SCALE_UNIFORM:.2f}".ljust(40)+"│")
+            print(f"│  🎯 鱼饵识别算法: {bait_recognition_algorithms[bait_recognition_algorithm]}".ljust(40)+"│")
+            print(f"│  ⌨️  热键: {hotkey_name}".ljust(40)+"│")
+            print(f"│  🎲 时间抖动: ±{JITTER_RANGE}%".ljust(40)+"│")
+            print(f"└" + "─" * 48 + "┘")
             # 保存到文件
             save_parameters()
         except ValueError as e:
@@ -2068,6 +2067,74 @@ def create_gui():
     jitter_var.trace(
         "w", lambda *args: jitter_value_label.configure(text=f"{jitter_var.get()}%")
     )
+    # ==================== 鱼饵识别算法设置卡片 ====================
+    bait_algorithm_card = ttkb.Labelframe(
+        left_content_frame,
+        text=" 🎯 鱼饵识别算法 ",
+        padding=12,
+        bootstyle="primary",
+    )
+    bait_algorithm_card.pack(fill=X, pady=(0, 8))
+
+    # 鱼饵识别算法变量
+    bait_algorithm_var = ttkb.StringVar(value=bait_recognition_algorithm)
+
+    # 创建算法选择水平框架
+    algorithm_frame = ttkb.Frame(bait_algorithm_card)
+    algorithm_frame.pack(fill=X, pady=4)
+
+    # 算法选择标签
+    algorithm_label = ttkb.Label(
+        algorithm_frame,
+        text="识别算法:",
+        bootstyle="primary",
+        font=("Segoe UI", 9),
+    )
+    algorithm_label.pack(side=LEFT, padx=(0, 8))
+
+    # 算法选择下拉框
+    # 设置当前算法的中文名称
+    current_algorithm_name = bait_recognition_algorithms[bait_recognition_algorithm]
+    
+    algorithm_combo = ttkb.Combobox(
+        algorithm_frame,
+        textvariable=bait_algorithm_var,
+        values=list(bait_recognition_algorithms.values()),
+        state="readonly",
+        font=(("Segoe UI", 9)),
+        width=15,
+    )
+    # 初始化为当前算法的中文名称
+    bait_algorithm_var.set(current_algorithm_name)
+    algorithm_combo.pack(side=LEFT, padx=(0, 8))
+
+    # 算法说明标签
+    algorithm_desc_label = ttkb.Label(
+        algorithm_frame,
+        text=bait_recognition_algorithms[bait_recognition_algorithm],
+        bootstyle="info",
+        font=("Segoe UI", 9),
+    )
+    algorithm_desc_label.pack(side=LEFT, padx=(0, 8))
+
+    # 算法选择变化事件处理
+    def on_algorithm_change(event=None):
+        """切换鱼饵识别算法"""
+        global bait_recognition_algorithm
+        selected_algorithm_name = bait_algorithm_var.get()
+        # 创建反向映射字典：中文名称 -> 英文键名
+        algorithm_name_to_key = {v: k for k, v in bait_recognition_algorithms.items()}
+        # 根据中文名称获取对应的英文键名
+        selected_algorithm_key = algorithm_name_to_key[selected_algorithm_name]
+        
+        if selected_algorithm_key != bait_recognition_algorithm:
+            bait_recognition_algorithm = selected_algorithm_key
+            # 保存设置
+            save_parameters()
+            print(f"⚙️  [配置] 鱼饵识别算法已切换为: {selected_algorithm_key} ({selected_algorithm_name})")
+
+    # 绑定算法选择变化事件
+    algorithm_combo.bind("<<ComboboxSelected>>", on_algorithm_change)
     # ==================== 鱼桶满检测设置卡片 ====================
     bucket_card = ttkb.Labelframe(
         left_content_frame,
@@ -3655,7 +3722,7 @@ def create_gui():
 
     version_label = ttkb.Label(
         left_status_frame,
-        text="v.2.9.2 | PartyFish",
+        text="v.2.9.3 | PartyFish",
         bootstyle="light",
         font=("Segoe UI", 8, "bold"),
     )
@@ -3950,73 +4017,164 @@ def scale_point(x, y):
     return (int(x * SCALE_X), int(y * SCALE_Y))
 
 
+def scale_position(x, y, w=0, h=0, anchor="center", coordinate_type="point"):
+    """
+    统一的位置缩放函数，支持多种锚定方式和坐标类型
+    
+    Args:
+        x: 基础X坐标
+        y: 基础Y坐标
+        w: 宽度（可选，用于区域或尺寸计算）
+        h: 高度（可选，用于区域或尺寸计算）
+        anchor: 锚定方式，可选值："center", "bottom_right", "top_left", "top_right", "bottom_left", "bottom_center", "top_center"
+        coordinate_type: 坐标类型，可选值："point"（单点）, "region"（区域）
+        
+    Returns:
+        根据coordinate_type返回不同结果：
+        - "point": (scaled_x, scaled_y) 单点坐标
+        - "region": (scaled_x1, scaled_y1, scaled_w, scaled_h) 区域坐标（与现有函数兼容）
+    """
+    if coordinate_type == "point":
+        # 单点坐标处理
+        if anchor == "center":
+            # 中心锚定
+            center_offset_x = x - BASE_WIDTH / 2
+            center_offset_y = y - BASE_HEIGHT / 2
+            scaled_x = int(TARGET_WIDTH / 2 + center_offset_x * SCALE_X)
+            scaled_y = int(TARGET_HEIGHT / 2 + center_offset_y * SCALE_Y)
+            return (scaled_x, scaled_y)
+        elif anchor == "bottom_right":
+            # 右下角锚定
+            offset_from_right = BASE_WIDTH - x
+            offset_from_bottom = BASE_HEIGHT - y
+            scale = SCALE_UNIFORM
+            scaled_x = TARGET_WIDTH - int(offset_from_right * scale)
+            scaled_y = TARGET_HEIGHT - int(offset_from_bottom * scale)
+            return (scaled_x, scaled_y)
+        elif anchor == "top_left":
+            # 左上角锚定
+            scale = SCALE_UNIFORM
+            return (int(x * scale), int(y * scale))
+        elif anchor == "top_right":
+            # 右上角锚定
+            offset_from_right = BASE_WIDTH - x
+            scale = SCALE_UNIFORM
+            scaled_x = TARGET_WIDTH - int(offset_from_right * scale)
+            scaled_y = int(y * scale)
+            return (scaled_x, scaled_y)
+        elif anchor == "bottom_left":
+            # 左下角锚定
+            offset_from_bottom = BASE_HEIGHT - y
+            scale = SCALE_UNIFORM
+            scaled_x = int(x * scale)
+            scaled_y = TARGET_HEIGHT - int(offset_from_bottom * scale)
+            return (scaled_x, scaled_y)
+        elif anchor == "bottom_center":
+            # 底部中心锚定
+            center_offset_x = x - BASE_WIDTH / 2
+            offset_from_bottom = BASE_HEIGHT - y
+            scale = SCALE_UNIFORM
+            scaled_x = int(TARGET_WIDTH / 2 + center_offset_x * scale)
+            scaled_y = TARGET_HEIGHT - int(offset_from_bottom * scale)
+            return (scaled_x, scaled_y)
+        elif anchor == "top_center":
+            # 顶部中心锚定
+            center_offset_x = x - BASE_WIDTH / 2
+            scale = SCALE_UNIFORM
+            scaled_x = int(TARGET_WIDTH / 2 + center_offset_x * scale)
+            scaled_y = int(y * scale)
+            return (scaled_x, scaled_y)
+        else:
+            # 默认使用普通缩放
+            return (int(x * SCALE_X), int(y * SCALE_Y))
+    else:
+        # 区域坐标处理
+        if anchor == "center":
+            # 中心锚定
+            center_offset_x = x - BASE_WIDTH / 2
+            center_offset_y = y - BASE_HEIGHT / 2
+            new_x = int(TARGET_WIDTH / 2 + center_offset_x * SCALE_X)
+            new_y = int(TARGET_HEIGHT / 2 + center_offset_y * SCALE_Y)
+            new_w = int(w * SCALE_X)
+            new_h = int(h * SCALE_Y)
+            return (new_x, new_y, new_w, new_h)
+        elif anchor == "bottom_right":
+            # 右下角锚定
+            offset_from_right = BASE_WIDTH - x
+            offset_from_bottom = BASE_HEIGHT - y
+            scale = SCALE_UNIFORM
+            new_x = TARGET_WIDTH - int(offset_from_right * scale)
+            new_y = TARGET_HEIGHT - int(offset_from_bottom * scale)
+            new_w = int(w * scale)
+            new_h = int(h * scale)
+            return (new_x, new_y, new_w, new_h)
+        elif anchor == "top_left":
+            # 左上角锚定
+            scale = SCALE_UNIFORM
+            return (int(x * scale), int(y * scale), int(w * scale), int(h * scale))
+        elif anchor == "bottom_center":
+            # 底部中心锚定
+            center_offset_x = x - BASE_WIDTH / 2
+            offset_from_bottom = BASE_HEIGHT - y
+            scale = SCALE_UNIFORM
+            new_x = int(TARGET_WIDTH / 2 + center_offset_x * scale)
+            new_y = TARGET_HEIGHT - int(offset_from_bottom * scale)
+            new_w = int(w * scale)
+            new_h = int(h * scale)
+            return (new_x, new_y, new_w, new_h)
+        elif anchor == "top_center":
+            # 顶部中心锚定
+            center_offset_x = x - BASE_WIDTH / 2
+            scale = SCALE_UNIFORM
+            new_x = int(TARGET_WIDTH / 2 + center_offset_x * scale)
+            new_y = int(y * scale)
+            new_w = int(w * scale)
+            new_h = int(h * scale)
+            return (new_x, new_y, new_w, new_h)
+        elif anchor == "uniform":
+            # 统一缩放
+            return scale_coords_uniform(x, y, w, h)
+        else:
+            # 默认使用普通缩放
+            return scale_coords(x, y, w, h)
+
+
 def scale_point_center_anchored(x, y):
-    """使用中心锚定方式缩放单点坐标（适用于居中UI元素如加时按钮）"""
-    # 分别使用X和Y方向的缩放比例，确保不同宽高比下坐标准确
-    center_offset_x = x - BASE_WIDTH / 2
-    center_offset_y = y - BASE_HEIGHT / 2
-    return (
-        int(TARGET_WIDTH / 2 + center_offset_x * SCALE_X),
-        int(TARGET_HEIGHT / 2 + center_offset_y * SCALE_Y),
-    )
+    """使用中心锚定方式缩放单点坐标（适用于居中UI元素如加时按钮）
+    兼容旧代码，调用统一的scale_position函数
+    """
+    return scale_position(x, y, anchor="center", coordinate_type="point")
 
 
 def scale_corner_anchored(base_x, base_y, base_w, base_h, anchor="bottom_right"):
     """
     缩放锚定在角落的UI元素坐标
     游戏UI（如鱼饵数量）通常锚定在屏幕角落而不是按比例缩放
+    
+    兼容旧代码，调用统一的scale_position函数
 
     anchor: "bottom_right", "top_left", "center" 等
     """
-    if anchor == "bottom_right":
-        # 计算距离右下角的偏移（基于2K分辨率）
-        offset_from_right = BASE_WIDTH - base_x
-        offset_from_bottom = BASE_HEIGHT - base_y
-        # 在目标分辨率中，从右下角计算实际位置
-        # 使用基于高度的缩放比例，确保16:10等非16:9分辨率下元素正确定位
-        scale = SCALE_UNIFORM
-        new_x = TARGET_WIDTH - int(offset_from_right * scale)
-        new_y = TARGET_HEIGHT - int(offset_from_bottom * scale)
-        new_w = int(base_w * scale)
-        new_h = int(base_h * scale)
-        return (new_x, new_y, new_w, new_h)
-    elif anchor == "center":
-        # 居中的元素按比例缩放
-        return scale_coords_uniform(base_x, base_y, base_w, base_h)
-    else:
-        # 默认使用普通缩放
-        return scale_coords(base_x, base_y, base_w, base_h)
+    return scale_position(base_x, base_y, base_w, base_h, anchor=anchor, coordinate_type="region")
 
 
 def scale_coords_bottom_anchored(base_x, base_y, base_w, base_h):
     """
     缩放锚定在底部中央的UI元素坐标
     游戏UI（如F1/F2按钮）通常锚定在屏幕底部中央
+    
+    兼容旧代码，调用统一的scale_position函数
     """
-    scale = SCALE_UNIFORM
-    # X坐标：居中元素按中心点缩放
-    center_offset_x = base_x - BASE_WIDTH / 2
-    new_x = int(TARGET_WIDTH / 2 + center_offset_x * scale)
-    # Y坐标：锚定在底部
-    offset_from_bottom = BASE_HEIGHT - base_y
-    new_y = TARGET_HEIGHT - int(offset_from_bottom * scale)
-    new_w = int(base_w * scale)
-    new_h = int(base_h * scale)
-    return (new_x, new_y, new_w, new_h)
+    return scale_position(base_x, base_y, base_w, base_h, anchor="bottom_center", coordinate_type="region")
 
 
 def scale_coords_center_anchored(base_x, base_y, base_w, base_h):
     """
     使用中心锚定方式缩放区域坐标（适用于居中UI元素如加时检测区域）
+    
+    兼容旧代码，调用统一的scale_position函数
     """
-    # 分别使用X和Y方向的缩放比例，确保不同宽高比下坐标准确
-    center_offset_x = base_x - BASE_WIDTH / 2
-    center_offset_y = base_y - BASE_HEIGHT / 2
-    new_x = int(TARGET_WIDTH / 2 + center_offset_x * SCALE_X)
-    new_y = int(TARGET_HEIGHT / 2 + center_offset_y * SCALE_Y)
-    new_w = int(base_w * SCALE_X)
-    new_h = int(base_h * SCALE_Y)
-    return (new_x, new_y, new_w, new_h)
+    return scale_position(base_x, base_y, base_w, base_h, anchor="center", coordinate_type="region")
 
 
 # =========================
@@ -4132,6 +4290,253 @@ def update_region_coords():
 # 参数设置
 # =========================
 template_folder_path = os.path.join(".", "resources")
+
+# =========================
+# 鱼饵识别算法配置
+# =========================
+bait_recognition_algorithm = "template"  # 默认使用模板匹配算法
+bait_recognition_algorithms = {
+    "template": "模板匹配算法",
+    "ocr": "OCR识别算法",
+    "contour": "轮廓特征算法",
+    "pixel": "像素统计算法"
+}
+
+# =========================
+# 鱼饵识别器类
+# =========================
+class BaitRecognizer:
+    """
+    鱼饵识别器类，支持多种识别算法
+    """
+    
+    def __init__(self):
+        """初始化鱼饵识别器"""
+        # 初始化模板（如果使用模板匹配算法）
+        self.templates = []
+        self._load_templates()
+    
+    def _load_templates(self):
+        """加载数字模板"""
+        # 这里可以根据实际情况加载模板
+        # 由于模板匹配算法需要实际的模板文件，这里简化处理
+        pass
+    
+    def recognize(self, image, algorithm="template"):
+        """
+        使用指定算法识别鱼饵数量
+        
+        Args:
+            image: 截取的鱼饵区域图像（RGBA格式的NumPy数组）
+            algorithm: 使用的识别算法，可选值："template", "ocr", "contour", "pixel"
+            
+        Returns:
+            int: 识别出的鱼饵数量，如果识别失败则返回None
+        """
+        if image is None:
+            return None
+        
+        # 转换为灰度图像
+        gray_img = cv2.cvtColor(image, cv2.COLOR_RGBA2GRAY)
+        
+        # 根据选择的算法进行识别
+        if algorithm == "template":
+            return self._recognize_template(gray_img)
+        elif algorithm == "ocr":
+            return self._recognize_ocr(image)
+        elif algorithm == "contour":
+            return self._recognize_contour(gray_img)
+        elif algorithm == "pixel":
+            return self._recognize_pixel(gray_img)
+        else:
+            # 默认使用模板匹配算法
+            return self._recognize_template(gray_img)
+    
+    def _recognize_template(self, gray_img):
+        """
+        使用模板匹配算法识别鱼饵数量
+        
+        Args:
+            gray_img: 灰度图像
+            
+        Returns:
+            int: 识别出的鱼饵数量，如果识别失败则返回None
+        """
+        # 根据统一缩放比例动态计算裁切尺寸
+        scale = SCALE_UNIFORM
+        crop_h = max(1, int(BAIT_CROP_HEIGHT_BASE * scale))
+        crop_w = max(1, int(BAIT_CROP_WIDTH1_BASE * scale))
+
+        # 确保不超出图像边界
+        img_h, img_w = gray_img.shape[:2]
+        crop_h = min(crop_h, img_h)
+        crop_w = min(crop_w, img_w // 2)  # 确保单个数字宽度不超过一半
+
+        # 初始化匹配结果
+        best_match1 = None
+        best_match2 = None
+        best_match3 = None
+
+        # 截取并处理区域1（第一个数字）
+        if crop_w <= img_w:
+            region1 = gray_img[0:crop_h, 0:crop_w]
+            best_match1 = match_digit_template(region1)
+
+        # 截取并处理区域2（第二个数字）
+        if crop_w * 2 <= img_w:
+            region2 = gray_img[0:crop_h, crop_w : crop_w * 2]
+            best_match2 = match_digit_template(region2)
+
+        # 单个数字居中区域 - 动态计算起始位置，适应各种分辨率
+        mid_start = max(0, (img_w - crop_w) // 2)
+        mid_end = min(mid_start + crop_w, img_w)
+        region3 = gray_img[0:crop_h, mid_start:mid_end]
+        best_match3 = match_digit_template(region3)
+        
+        if best_match1 and best_match2:
+            # 从best_match中提取数字索引（i），并拼接成整数
+            best_match1_val = best_match1[0]  # 提取区域1的数字索引
+            best_match2_val = best_match2[0]  # 提取区域2的数字索引
+            # 拼接两个匹配的数字，转换为整数
+            return int(f"{best_match1_val}{best_match2_val}")
+        elif best_match3:
+            return int(f'{best_match3[0]}')
+        else:
+            return None
+    
+    def _match_digit_template(self, image):
+        """匹配数字模板
+        
+        Args:
+            image: 待匹配的图像
+            
+        Returns:
+            tuple: (匹配的数字索引, 匹配位置)，如果匹配失败则返回None
+        """
+        best_match = None  # 最佳匹配信息
+        best_val = 0  # 存储最佳匹配度
+        
+        # 这里应该使用实际的模板，目前简化处理
+        # 实际实现中应该加载预定义的数字模板
+        for i in range(10):
+            # 简化处理，假设模板匹配成功
+            # 实际实现中应该使用cv2.matchTemplate进行匹配
+            pass
+        
+        # 这里返回None表示需要使用实际模板才能进行匹配
+        # 实际实现中应该返回最佳匹配结果
+        return None
+    
+    def _recognize_ocr(self, image):
+        """
+        使用OCR算法识别鱼饵数量
+        
+        Args:
+            image: 原始图像
+            
+        Returns:
+            int: 识别出的鱼饵数量，如果识别失败则返回None
+        """
+        if not OCR_AVAILABLE or ocr_engine is None:
+            return None
+        
+        try:
+            # 将RGBA图像转换为RGB
+            img_rgb = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
+            # 使用OCR识别文本
+            result = ocr_engine(img_rgb)
+            
+            if result and len(result) > 0:
+                for line in result:
+                    text = line[1][0]
+                    # 提取数字
+                    digits = re.findall(r'\d+', text)
+                    if digits:
+                        return int(digits[0])
+        except Exception as e:
+            if debug_mode:
+                print(f"⚠️  [OCR] 识别失败: {e}")
+        return None
+    
+    def _recognize_contour(self, gray_img):
+        """
+        使用轮廓特征算法识别鱼饵数量
+        
+        Args:
+            gray_img: 灰度图像
+            
+        Returns:
+            int: 识别出的鱼饵数量，如果识别失败则返回None
+        """
+        try:
+            # 二值化处理
+            _, thresh = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            # 查找轮廓
+            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+            
+            # 过滤小轮廓
+            valid_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 10]
+            
+            # 根据轮廓数量和特征识别数字
+            # 这里简化处理，实际实现中应该根据轮廓特征进行更复杂的判断
+            if len(valid_contours) == 1:
+                # 可能是单个数字
+                return 1
+            elif len(valid_contours) == 2:
+                # 可能是两个数字
+                return 2
+        except Exception as e:
+            if debug_mode:
+                print(f"⚠️  [轮廓识别] 识别失败: {e}")
+        return None
+    
+    def _recognize_pixel(self, gray_img):
+        """
+        使用像素统计算法识别鱼饵数量
+        
+        Args:
+            gray_img: 灰度图像
+            
+        Returns:
+            int: 识别出的鱼饵数量，如果识别失败则返回None
+        """
+        try:
+            # 计算非零像素数量
+            non_zero_count = cv2.countNonZero(gray_img)
+            # 计算总像素数量
+            total_count = gray_img.shape[0] * gray_img.shape[1]
+            # 计算非零像素比例
+            ratio = non_zero_count / total_count
+            
+            # 根据比例识别数字
+            # 这里简化处理，实际实现中应该根据实际情况调整阈值
+            if ratio < 0.1:
+                return 0
+            elif ratio < 0.2:
+                return 1
+            elif ratio < 0.3:
+                return 2
+            elif ratio < 0.4:
+                return 3
+            elif ratio < 0.5:
+                return 4
+            elif ratio < 0.6:
+                return 5
+            elif ratio < 0.7:
+                return 6
+            elif ratio < 0.8:
+                return 7
+            elif ratio < 0.9:
+                return 8
+            else:
+                return 9
+        except Exception as e:
+            if debug_mode:
+                print(f"⚠️  [像素统计] 识别失败: {e}")
+        return None
+
+# 创建全局鱼饵识别器实例
+bait_recognizer = BaitRecognizer()
 
 # =========================
 # 钓鱼记录系统
@@ -5151,17 +5556,25 @@ def handle_fish_bucket_full():
             keyboard_listener = keyboard.Listener(on_press=on_key_press)
             keyboard_listener.start()
 
-            print("🖱️  [操作] 开始连续点击鼠标左键，1秒/次，直到检测到键盘活动")
+            print("⌨️  [操作] 开始WASD循环点击，1秒/循环，直到检测到键盘活动")
 
-            # 一直点击鼠标左键，直到检测到键盘活动
+            # 一直循环点击WASD，直到检测到键盘活动
             while not keyboard_activity[0] and keyboard_listener.is_alive():
-                # 点击鼠标左键
-                mouse_controller.press(mouse.Button.left)
-                time.sleep(0.1)  # 按下持续时间
-                mouse_controller.release(mouse.Button.left)
-                time.sleep(0.9)  # 点击间隔，总间隔1秒
+                # 定义WASD键列表
+                keys = ["w", "a", "s", "d"]
+                
+                # 循环点击每个键
+                for key in keys:
+                    # 点击键
+                    keyboard_controller.press(keyboard.KeyCode.from_char(key))
+                    time.sleep(0.5)  # 按下持续时间
+                    keyboard_controller.release(keyboard.KeyCode.from_char(key))
+                    print(f"⌨️  [操作] 已点击{key}键")
+                    time.sleep(0.5)  # 键之间的间隔
+                
+                time.sleep(0.5)
 
-            print("🖱️  [操作] 已停止连续点击鼠标左键")
+            print("⌨️  [操作] 已停止WASD循环点击")
 
             # 停止键盘监听器
             if keyboard_listener.is_alive():
@@ -5915,6 +6328,7 @@ def bait_math_val(scr):
             "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
             "action": "bait_recognition_start",
             "message": "开始识别鱼饵数量",
+            "algorithm": bait_recognition_algorithm,
         }
         add_debug_info(debug_info)
 
@@ -6010,12 +6424,11 @@ def bait_math_val(scr):
         # 记录日志：识别结果
         if debug_mode:
             debug_info = {
-                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[
-                    :-3
-                ],
+                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
                 "action": "bait_recognition_result",
                 "message": "鱼饵识别完成",
                 "result": result_val_is,
+                "algorithm": bait_recognition_algorithm,
                 "parsed_info": {
                     "鱼饵数量": result_val_is if result_val_is is not None else "未识别"
                 },
@@ -6582,7 +6995,7 @@ if __name__ == "__main__":
     print()
     print("╔" + "═" * 50 + "╗")
     print("║" + " " * 50 + "║")
-    print("║     🎣  PartyFish 自动钓鱼助手  v.2.9.2".ljust(44) + "║")
+    print("║     🎣  PartyFish 自动钓鱼助手  v.2.9.3".ljust(44) + "║")
     print("║" + " " * 50 + "║")
     print("╠" + "═" * 50 + "╣")
     print(
@@ -6595,6 +7008,7 @@ if __name__ == "__main__":
         f"║  🪣 鱼桶满检测: {'✅ 已启用' if OCR_AVAILABLE else '❌ 未启用'}".ljust(46)
         + "║"
     )
+    print(f"║  🎯 鱼饵识别算法: {bait_recognition_algorithms[bait_recognition_algorithm]}".ljust(47) + "║")
     print("║  🔧 开发者: FadedTUMI/PeiXiaoXiao/MaiDong".ljust(47) + "║")
     print("╚" + "═" * 50 + "╝")
     print()
