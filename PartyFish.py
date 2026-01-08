@@ -8,6 +8,10 @@ from PIL import Image
 import threading  # 用于在独立线程中运行脚本
 import ctypes
 from pynput import keyboard, mouse  # 用于监听键盘和鼠标事件，支持热键和鼠标侧键操作
+
+# 初始化键盘和鼠标控制器
+keyboard_controller = keyboard.Controller()
+mouse_controller = mouse.Controller()
 import datetime
 import re
 import queue  # 用于线程安全通信
@@ -5066,7 +5070,7 @@ class WarningSoundWindow:
 
 def handle_fish_bucket_full():
     """处理鱼桶满的情况"""
-    global fish_bucket_full_detected
+    global fish_bucket_full_detected, bucket_full_by_interval
     
     # 在运行日志中提示
     print(f"🪣  [警告] 检测到: {FISH_BUCKET_FULL_TEXT}")
@@ -5081,8 +5085,10 @@ def handle_fish_bucket_full():
         if run_event.is_set():
             toggle_run()
             print("🛑 [状态] 脚本已自动停止 (鱼桶已满/没鱼饵/没鱼饵)")
+        # 保持检测状态为True，避免重复触发
+        fish_bucket_full_detected = True
     elif bucket_detection_mode == "mode2":
-        # 模式2：F键+左键模式 - 按下一次F键然后一直鼠标左键，遇到键盘活动自动停止
+        # 模式2：F键+左键模式 - 按下一次F键然后一直点击鼠标左键，遇到键盘活动自动停止
         play_fish_bucket_warning_sound()
         
         try:
@@ -5092,34 +5098,39 @@ def handle_fish_bucket_full():
             keyboard_controller.release(keyboard.KeyCode.from_char('f'))
             print("⌨️  [操作] 已按下F键")
             
-            # 一直按住鼠标左键，直到检测到键盘活动
+            # 键盘活动标志
+            keyboard_activity = [False]
+            
+            # 键盘按下事件处理
             def on_key_press(key):
                 """键盘按下事件处理"""
-                print("⌨️  [检测] 键盘活动，停止鼠标左键")
+                print("⌨️  [检测] 键盘活动，停止鼠标点击")
+                keyboard_activity[0] = True
                 return False  # 停止监听器
             
             # 启动键盘监听器
             keyboard_listener = keyboard.Listener(on_press=on_key_press)
             keyboard_listener.start()
             
-            # 按住鼠标左键
-            mouse_controller.press(mouse.Button.left)
-            print("🖱️  [操作] 开始按住鼠标左键")
+            print("🖱️  [操作] 开始连续点击鼠标左键，1秒/次，直到检测到键盘活动")
             
-            # 等待键盘活动或5秒后自动停止
-            start_time = time.time()
-            while keyboard_listener.is_alive() and time.time() - start_time < 5:
-                time.sleep(0.1)
+            # 一直点击鼠标左键，直到检测到键盘活动
+            while not keyboard_activity[0] and keyboard_listener.is_alive():
+                # 点击鼠标左键
+                mouse_controller.press(mouse.Button.left)
+                time.sleep(0.1)  # 按下持续时间
+                mouse_controller.release(mouse.Button.left)
+                time.sleep(0.9)  # 点击间隔，总间隔1秒
             
-            # 释放鼠标左键
-            mouse_controller.release(mouse.Button.left)
-            print("🖱️  [操作] 已释放鼠标左键")
+            print("🖱️  [操作] 已停止连续点击鼠标左键")
             
             # 停止键盘监听器
             if keyboard_listener.is_alive():
                 keyboard_listener.stop()
         except Exception as e:
             print(f"❌ [错误] 执行F键+左键模式时出错: {e}")
+        # 模式2不自动暂停，重置检测状态
+        reset_fish_bucket_full_detection()
     elif bucket_detection_mode == "mode3":
         # 模式3：仅F键模式 - 不会自动暂停，只会按下一次F键
         play_fish_bucket_warning_sound()
@@ -5132,8 +5143,8 @@ def handle_fish_bucket_full():
             print("⌨️  [操作] 已按下F键")
         except Exception as e:
             print(f"❌ [错误] 执行仅F键模式时出错: {e}")
-    
-    fish_bucket_full_detected = True
+        # 模式3不自动暂停，重置检测状态
+        reset_fish_bucket_full_detection()
 
 def reset_fish_bucket_full_detection():
     """重置鱼桶满检测状态"""

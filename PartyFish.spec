@@ -4,7 +4,7 @@ from PyInstaller.utils.hooks import collect_all
 
 datas = [('resources', 'resources')]
 binaries = []
-hiddenimports = ['rapidocr_onnxruntime', 'onnxruntime', 'cv2', 'numpy', 'PIL', 'pynput', 'ttkbootstrap', 'mss', 'yaml', 'winsound']
+hiddenimports = ['rapidocr_onnxruntime', 'onnxruntime', 'cv2', 'numpy', 'PIL', 'pynput', 'ttkbootstrap', 'mss', 'yaml']
 datas += collect_data_files('rapidocr_onnxruntime')
 tmp_ret = collect_all('rapidocr_onnxruntime')
 datas += tmp_ret[0]; binaries += tmp_ret[1]; hiddenimports += tmp_ret[2]
