@@ -904,6 +904,7 @@ def update_parameters(
     record_fish_var=None,
     legendary_screenshot_var=None,
     jitter_var=None,
+    uno_hotkey_var_param=None,
 ):
     global t, leftclickdown, leftclickup, times, paogantime, jiashi_var
     global resolution_choice, TARGET_WIDTH, TARGET_HEIGHT, SCALE_X, SCALE_Y
@@ -947,21 +948,20 @@ def update_parameters(
                         pass  # 保持原有热键设置
 
             # 更新UNO热键设置
-            if "uno_hotkey_var" in globals():
-                uno_hotkey_var_instance = globals()["uno_hotkey_var"]
-                if uno_hotkey_var_instance is not None:
-                    new_uno_hotkey = uno_hotkey_var_instance.get()
-                    if new_uno_hotkey:
-                        try:
-                            uno_modifiers, uno_main_key, uno_main_key_name = (
-                                parse_hotkey_string(new_uno_hotkey)
-                            )
-                            if uno_main_key is not None:
-                                uno_hotkey_name = new_uno_hotkey
-                                uno_hotkey_modifiers = uno_modifiers
-                                uno_hotkey_main_key = uno_main_key
-                        except Exception:
-                            pass  # 保持原有UNO热键设置
+            if uno_hotkey_var_param is not None:
+                new_uno_hotkey = uno_hotkey_var_param.get()
+                if new_uno_hotkey:
+                    try:
+                        uno_modifiers, uno_main_key, uno_main_key_name = (
+                            parse_hotkey_string(new_uno_hotkey)
+                        )
+                        if uno_main_key is not None:
+                            uno_hotkey_name = new_uno_hotkey
+                            uno_hotkey_modifiers = uno_modifiers
+                            uno_hotkey_main_key = uno_main_key
+                    except Exception as e:
+                        print(f"❌ [错误] 解析UNO热键失败: {e}")
+                        pass  # 保持原有UNO热键设置
 
             # 更新分辨率设置
             resolution_choice = resolution_var.get()
@@ -2698,6 +2698,7 @@ def create_gui():
 
     # ==================== UNO热键设置 ====================
     # UNO热键显示变量
+    global uno_hotkey_var
     uno_hotkey_var = ttkb.StringVar(value=uno_hotkey_name)
 
     # UNO热键捕获状态
@@ -3594,6 +3595,8 @@ def create_gui():
             hotkey_var,
             record_fish_var,
             legendary_screenshot_var,
+            jitter_var=jitter_var,
+            uno_hotkey_var_param=uno_hotkey_var,
         )
         resolution_info_var.set(f"当前: {TARGET_WIDTH}×{TARGET_HEIGHT}")
         hotkey_info_label.config(text=f"按 {hotkey_name} 启动/暂停 | 点击按钮修改")
