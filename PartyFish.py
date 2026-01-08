@@ -30,18 +30,19 @@ from ttkbootstrap.constants import *
 import json  # 用于保存和加载参数
 import mss
 
+
 # =========================
 # 全局图标管理
 # =========================
 def get_icon_path():
     """获取666.ico图标的路径，处理不同环境下的路径问题
-    
+
     Returns:
         str: 666.ico图标的完整路径
     """
     import sys
     import os
-    
+
     if hasattr(sys, "_MEIPASS"):
         # 打包后使用_internal目录
         icon_path = os.path.join(sys._MEIPASS, "_internal", "666.ico")
@@ -51,21 +52,22 @@ def get_icon_path():
     else:
         # 开发环境下直接使用当前目录
         icon_path = "666.ico"
-    
+
     return icon_path
+
 
 def set_window_icon(window):
     """设置窗口图标，同时支持窗口和任务栏
-    
+
     Args:
         window: 要设置图标的窗口对象
     """
     try:
         import tkinter as tk
-        
+
         # 获取图标路径
         icon_path = get_icon_path()
-        
+
         # 尝试使用iconphoto方法设置图标（同时支持窗口和任务栏）
         try:
             icon = tk.PhotoImage(file=icon_path)
@@ -78,6 +80,7 @@ def set_window_icon(window):
                 print(f"⚠️  [警告] 设置窗口图标失败: {e2}")
     except Exception as e:
         print(f"⚠️  [警告] 设置窗口图标时发生错误: {e}")
+
 
 # =========================
 # OCR引擎初始化（使用rapidocr，速度快）
@@ -112,6 +115,8 @@ casting_interval_lock = threading.Lock()  # 保护抛竿时间戳的线程锁
 CASTING_INTERVAL_THRESHOLD = 0.15  # 抛竿间隔阈值（秒）
 REQUIRED_CONSECUTIVE_MATCHES = 4  # 需要连续匹配的次数
 bucket_full_by_interval = False  # 标记是否通过间隔检测到鱼桶满/没鱼饵！
+
+
 # =========================
 # 调试信息管理函数
 # =========================
@@ -236,7 +241,6 @@ JITTER_RANGE = 0  # 时间抖动范围 ±0%
 # 保存上次操作的时间戳
 last_operation_time = None
 last_operation_type = None
-
 
 
 def add_jitter(base_time):
@@ -684,7 +688,7 @@ def save_parameters():
         "font_size": font_size,
         "jitter_range": JITTER_RANGE,
         "fish_bucket_sound_enabled": fish_bucket_sound_enabled,
-        "bucket_detection_mode": bucket_detection_mode # 新增保存鱼桶检测模式
+        "bucket_detection_mode": bucket_detection_mode,  # 新增保存鱼桶检测模式
     }
 
     try:
@@ -697,14 +701,14 @@ def save_parameters():
 
 def load_parameters():
     """从文件加载参数"""
-    global fish_bucket_sound_enabled, bucket_detection_mode # 新增加载鱼桶满/没鱼饵警告!音效开关状态和检测模式
+    global fish_bucket_sound_enabled, bucket_detection_mode  # 新增加载鱼桶满/没鱼饵警告!音效开关状态和检测模式
     global t, leftclickdown, leftclickup, times, paogantime, jiashi_var
     global resolution_choice, TARGET_WIDTH, TARGET_HEIGHT, SCALE_X, SCALE_Y
     global hotkey_name, hotkey_modifiers, hotkey_main_key
     global font_size, record_fish_enabled, legendary_screenshot_enabled
     global config_names, config_params, current_config_index
     global JITTER_RANGE
-
+    global uno_hotkey_name, uno_hotkey_modifiers, uno_hotkey_main_key  # 添加UNO热键全局变量
     try:
         with open(PARAMETER_FILE, "r", encoding="utf-8") as f:
             params = json.load(f)
@@ -758,7 +762,9 @@ def load_parameters():
             # 加载UNO热键设置
             saved_uno_hotkey = params.get("uno_hotkey", "F3")
             try:
-                uno_modifiers, uno_main_key, uno_main_key_name = parse_hotkey_string(saved_uno_hotkey)
+                uno_modifiers, uno_main_key, uno_main_key_name = parse_hotkey_string(
+                    saved_uno_hotkey
+                )
                 if uno_main_key is not None:
                     uno_hotkey_name = saved_uno_hotkey
                     uno_hotkey_modifiers = uno_modifiers
@@ -902,8 +908,8 @@ def update_parameters(
     global t, leftclickdown, leftclickup, times, paogantime, jiashi_var
     global resolution_choice, TARGET_WIDTH, TARGET_HEIGHT, SCALE_X, SCALE_Y
     global hotkey_name, hotkey_modifiers, hotkey_main_key
-    global record_fish_enabled, legendary_screenshot_enabled, JITTER_RANGE,fish_bucket_sound_enabled
-
+    global record_fish_enabled, legendary_screenshot_enabled, JITTER_RANGE, fish_bucket_sound_enabled
+    global uno_hotkey_name, uno_hotkey_modifiers, uno_hotkey_main_key
     with param_lock:  # 使用锁保护参数更新
         try:
             t = float(t_var.get())
@@ -941,19 +947,21 @@ def update_parameters(
                         pass  # 保持原有热键设置
 
             # 更新UNO热键设置
-            if 'uno_hotkey_var' in globals() and uno_hotkey_var is not None:
-                new_uno_hotkey = uno_hotkey_var.get()
-                if new_uno_hotkey:
-                    try:
-                        uno_modifiers, uno_main_key, uno_main_key_name = parse_hotkey_string(
-                            new_uno_hotkey
-                        )
-                        if uno_main_key is not None:
-                            uno_hotkey_name = new_uno_hotkey
-                            uno_hotkey_modifiers = uno_modifiers
-                            uno_hotkey_main_key = uno_main_key
-                    except Exception:
-                        pass  # 保持原有UNO热键设置
+            if "uno_hotkey_var" in globals():
+                uno_hotkey_var_instance = globals()["uno_hotkey_var"]
+                if uno_hotkey_var_instance is not None:
+                    new_uno_hotkey = uno_hotkey_var_instance.get()
+                    if new_uno_hotkey:
+                        try:
+                            uno_modifiers, uno_main_key, uno_main_key_name = (
+                                parse_hotkey_string(new_uno_hotkey)
+                            )
+                            if uno_main_key is not None:
+                                uno_hotkey_name = new_uno_hotkey
+                                uno_hotkey_modifiers = uno_modifiers
+                                uno_hotkey_main_key = uno_main_key
+                        except Exception:
+                            pass  # 保持原有UNO热键设置
 
             # 更新分辨率设置
             resolution_choice = resolution_var.get()
@@ -2061,29 +2069,31 @@ def create_gui():
     )
     # ==================== 鱼桶满检测设置卡片 ====================
     bucket_card = ttkb.Labelframe(
-    left_content_frame,
-    text=" 🪣 鱼桶满/没鱼饵检测 ",
-    padding=12,
-    bootstyle="warning"
+        left_content_frame,
+        text=" 🪣 鱼桶满/没鱼饵检测 ",
+        padding=12,
+        bootstyle="warning",
     )
     bucket_card.pack(fill=X, pady=(0, 8))
 
     # 音效开关
     global fish_bucket_sound_enabled
     fish_bucket_sound_var = ttkb.BooleanVar(value=fish_bucket_sound_enabled)
-    
+
     # 创建音效开关水平框架
     sound_frame = ttkb.Frame(bucket_card)
     sound_frame.pack(fill=X, pady=(0, 4))
-    
+
     # 音效开关标签
-    sound_label = ttkb.Label(sound_frame, text="启用警告音效", bootstyle="warning", font=('Segoe UI', 9))
+    sound_label = ttkb.Label(
+        sound_frame, text="启用警告音效", bootstyle="warning", font=("Segoe UI", 9)
+    )
     sound_label.pack(side=LEFT, padx=(0, 5), pady=0)
-    
+
     # 创建一个框架来容纳单选按钮，并将其靠右显示
     sound_rb_frame = ttkb.Frame(sound_frame)
     sound_rb_frame.pack(side=RIGHT, padx=0, pady=0)
-    
+
     # "是"单选按钮
     sound_yes = ttkb.Radiobutton(
         sound_rb_frame,
@@ -2091,10 +2101,10 @@ def create_gui():
         variable=fish_bucket_sound_var,
         value=True,
         bootstyle="success-outline-toolbutton",
-        cursor="hand2"
+        cursor="hand2",
     )
     sound_yes.pack(side=LEFT, padx=3)
-    
+
     # "否"单选按钮
     sound_no = ttkb.Radiobutton(
         sound_rb_frame,
@@ -2102,7 +2112,7 @@ def create_gui():
         variable=fish_bucket_sound_var,
         value=False,
         bootstyle="danger-outline-toolbutton",
-        cursor="hand2"
+        cursor="hand2",
     )
     sound_no.pack(side=LEFT, padx=3)
 
@@ -2120,16 +2130,18 @@ def create_gui():
     # 运行模式选择
     global bucket_detection_mode
     bucket_mode_var = ttkb.StringVar(value=bucket_detection_mode)
-    
+
     mode_frame = ttkb.Frame(bucket_card)
     mode_frame.pack(fill=X, pady=(8, 0))
-    
-    ttkb.Label(mode_frame, text="运行模式:", bootstyle="warning", font=("Segoe UI", 9, "bold")).pack(anchor=CENTER, pady=(0, 4))
-    
+
+    ttkb.Label(
+        mode_frame, text="运行模式:", bootstyle="warning", font=("Segoe UI", 9, "bold")
+    ).pack(anchor=CENTER, pady=(0, 4))
+
     # 创建按钮组容器
     rb_frame = ttkb.Frame(mode_frame, padding=2)
     rb_frame.pack(fill=X, pady=(0, 4))
-    
+
     # 创建按钮式单选按钮组
     mode1_rb = ttkb.Radiobutton(
         rb_frame,
@@ -2137,46 +2149,43 @@ def create_gui():
         variable=bucket_mode_var,
         value="mode1",
         bootstyle="primary toolbutton",
-        cursor="hand2"
+        cursor="hand2",
     )
     mode1_rb.pack(fill=X, pady=1, padx=2)
-    
+
     mode2_rb = ttkb.Radiobutton(
         rb_frame,
         text="2.自动挂机",
         variable=bucket_mode_var,
         value="mode2",
         bootstyle="primary toolbutton",
-        cursor="hand2"
+        cursor="hand2",
     )
     mode2_rb.pack(fill=X, pady=1, padx=2)
-    
+
     mode3_rb = ttkb.Radiobutton(
         rb_frame,
         text="3.收杆模式",
         variable=bucket_mode_var,
         value="mode3",
         bootstyle="primary toolbutton",
-        cursor="hand2"
+        cursor="hand2",
     )
     mode3_rb.pack(fill=X, pady=1, padx=2)
-    
+
     def on_bucket_mode_change():
         """切换鱼桶满检测模式"""
         global bucket_detection_mode
         bucket_detection_mode = bucket_mode_var.get()
         # 保存设置
         save_parameters()
-    
+
     # 绑定模式变化事件
     bucket_mode_var.trace_add("write", lambda *args: on_bucket_mode_change())
 
     # 说明文字
     info_label = ttkb.Label(
-    bucket_card,
-    text="按照选择的模式执行",
-    bootstyle="info",
-    font=("Segoe UI", 8)
+        bucket_card, text="按照选择的模式执行", bootstyle="info", font=("Segoe UI", 8)
     )
     info_label.pack(anchor=CENTER, pady=(4, 0))
     # ==================== 热键设置卡片 ====================
@@ -2344,9 +2353,9 @@ def create_gui():
 
         # 启动键盘监听器，设置suppress=False允许事件传递
         capture_listener[0] = keyboard.Listener(
-            on_press=on_capture_key_press, 
+            on_press=on_capture_key_press,
             on_release=on_capture_key_release,
-            suppress=False
+            suppress=False,
         )
         capture_listener[0].start()
 
@@ -2667,25 +2676,23 @@ def create_gui():
         left_content_frame, text=" 🎮 UNO 设置 ", padding=12, bootstyle="primary"
     )
     uno_card.pack(fill=X, pady=(0, 8))
-    
+
     # UNO描述文本
     uno_desc = ttkb.Label(
         uno_card,
         text="这是UNO的UI界面，目前仅显示UI元素，暂未实现功能。",
         font=("Segoe UI", 9),
         bootstyle="primary",
-        wraplength=180
+        wraplength=180,
     )
     uno_desc.pack(pady=(0, 8))
-    
+
     # UNO开关
     uno_var = ttkb.IntVar(value=0)
-    
+
     uno_frame = ttkb.Frame(uno_card)
     uno_frame.pack(fill=X, pady=4)
 
-
-    
     uno_btn_frame = ttkb.Frame(uno_frame)
     uno_btn_frame.pack(side=RIGHT)
 
@@ -2773,7 +2780,9 @@ def create_gui():
             if "shift" in uno_captured_modifiers[0]:
                 display_parts.append("Shift")
             display_parts.append("...")
-            root.after(0, lambda: uno_hotkey_btn.configure(text="+".join(display_parts)))
+            root.after(
+                0, lambda: uno_hotkey_btn.configure(text="+".join(display_parts))
+            )
             return True
 
         # 这是主按键
@@ -2848,14 +2857,13 @@ def create_gui():
         uno_capture_listener[0] = keyboard.Listener(
             on_press=uno_on_capture_key_press,
             on_release=uno_on_capture_key_release,
-            suppress=False
+            suppress=False,
         )
         uno_capture_listener[0].start()
 
         # 启动鼠标监听器（用于检测侧键）
         mouse_listener = mouse.Listener(
-            on_click=uno_on_capture_mouse_click,
-            suppress=False
+            on_click=uno_on_capture_mouse_click, suppress=False
         )
         mouse_listener.start()
         globals()["uno_mouse_capture_listener"] = mouse_listener
@@ -2869,7 +2877,9 @@ def create_gui():
         # 5秒后自动取消捕获
         def auto_cancel():
             if uno_is_capturing_hotkey[0]:
-                root.after(0, lambda: uno_hotkey_btn.configure(text=uno_hotkey_var.get()))
+                root.after(
+                    0, lambda: uno_hotkey_btn.configure(text=uno_hotkey_var.get())
+                )
                 uno_stop_hotkey_capture()
 
         root.after(5000, auto_cancel)
@@ -4904,23 +4914,24 @@ def record_caught_fish():
 
 def check_fish_bucket_full(scr_param=None):
     """检查鱼桶是否已满
-    
+
     Args:
         scr_param: 截图对象，如果为None则使用全局scr对象（已弃用）
-    
+
     Returns:
         bool: 如果检测到鱼桶满则返回True，否则返回False
     """
     global fish_bucket_full_detected
-    
+
     # 直接返回通过抛竿间隔检测的结果
     return fish_bucket_full_detected or bucket_full_by_interval
+
 
 def play_fish_bucket_warning_sound():
     """播放鱼桶满/没鱼饵警告!音效"""
     if not fish_bucket_sound_enabled:
         return
-    
+
     try:
         # 创建警告窗口，开始循环播放声音
         WarningSoundWindow()
@@ -4929,79 +4940,82 @@ def play_fish_bucket_warning_sound():
         # 备选方案：播放单次声音
         try:
             import winsound
+
             winsound.MessageBeep(0x00000030)
             # 备选方案：使用print输出控制台铃声
-            print('\a')  # 控制台铃声
+            print("\a")  # 控制台铃声
         except:
             pass
 
+
 class WarningSoundWindow:
     """鱼桶满/没鱼饵警告!声音窗口 - 循环播放声音直到窗口关闭"""
+
     instance = None  # 类变量，用于跟踪是否已存在窗口实例
-    
+
     def __new__(cls, *args, **kwargs):
         """确保只能创建一个窗口实例"""
         if cls.instance is None:
             cls.instance = super(WarningSoundWindow, cls).__new__(cls)
         return cls.instance
-    
+
     def __init__(self):
         """初始化警告窗口"""
-        if hasattr(self, 'initialized') and self.initialized:
+        if hasattr(self, "initialized") and self.initialized:
             # 如果已经初始化，显示并置顶窗口
             if self.window:
                 self.window.deiconify()
                 self.window.lift()
             return
-        
+
         # 创建窗口
         self.window = tk.Toplevel()  # 使用标准Toplevel，避免bootstyle错误
         self.window.title("⚠️鱼桶满了/没鱼饵警告！")
         self.window.geometry("350x200")  # 增加窗口大小
         self.window.resizable(False, False)
         self.window.attributes("-topmost", True)  # 置顶窗口
-        
+
         # 设置窗口图标为666.ico
         set_window_icon(self.window)
-        
+
         # 声音播放控制
         self.sound_playing = True
         self.sound_thread = None
-        
+
         # 创建UI元素
         self.create_widgets()
-        
+
         # 绑定窗口关闭事件
         self.window.protocol("WM_DELETE_WINDOW", self.on_close)
-        
+
         # 启动声音播放线程
         self.start_sound_playback()
-        
+
         self.initialized = True
-    
+
     def create_widgets(self):
         """创建窗口控件"""
         main_frame = ttkb.Frame(self.window, padding=20)
         main_frame.pack(fill=BOTH, expand=YES)
-        
+
         # 警告标题
         title_label = ttkb.Label(
             main_frame,
             text="⚠️鱼桶满/没鱼饵警告!",
             font=("Segoe UI", 16, "bold"),
-            bootstyle="danger"
+            bootstyle="danger",
         )
         title_label.pack(pady=(10, 20))
-        
+
         # 警告信息
         info_label = ttkb.Label(
             main_frame,
             text="检测到鱼桶已满/没鱼饵！请及时处理。",
             font=("Segoe UI", 12),
-            bootstyle="info"
+            bootstyle="info",
         )
         info_label.pack(pady=(0, 30))
-        
+
         # 关闭按钮
         close_btn = ttkb.Button(
             main_frame,
@@ -5009,32 +5023,36 @@ class WarningSoundWindow:
             command=self.on_close,
             bootstyle="danger",  # 使用实色按钮，更醒目
             width=20,  # 增加按钮宽度
-            padding=10  # 增加按钮内边距
+            padding=10,  # 增加按钮内边距
         )
         close_btn.pack(pady=(0, 10))
-        
+
         # 提示信息
         hint_label = ttkb.Label(
             main_frame,
             text="点击按钮或关闭窗口即可停止警告音效",
             font=("Segoe UI", 8),
-            bootstyle="secondary"
+            bootstyle="secondary",
         )
         hint_label.pack()
-        
+
         # 调整布局，确保所有控件都能完整显示
         main_frame.update_idletasks()
         # 确保窗口大小足够容纳所有控件
-        self.window.geometry(f"{main_frame.winfo_reqwidth() + 40}x{main_frame.winfo_reqheight() + 40}")
-    
+        self.window.geometry(
+            f"{main_frame.winfo_reqwidth() + 40}x{main_frame.winfo_reqheight() + 40}"
+        )
+
     def start_sound_playback(self):
         """启动声音播放线程"""
+
         def play_loop_sound():
             """循环播放声音"""
             while self.sound_playing:
                 try:
                     # 尝试使用winsound播放警告声音
                     import winsound
+
                     winsound.Beep(1000, 300)
                     time.sleep(0.1)
                     winsound.Beep(800, 500)
@@ -5043,27 +5061,27 @@ class WarningSoundWindow:
                     print(f"⚠️  [警告] 播放循环警告音效失败: {e}")
                     # 备选方案：使用控制台铃声
                     try:
-                        print('\a', end='', flush=True)  # 控制台铃声
+                        print("\a", end="", flush=True)  # 控制台铃声
                         time.sleep(1.5)  # 间隔1.5秒后再次播放
                     except:
                         pass
                     time.sleep(1)
-        
+
         self.sound_thread = threading.Thread(target=play_loop_sound, daemon=True)
         self.sound_thread.start()
-    
+
     def on_close(self):
         """窗口关闭事件处理"""
         # 停止声音播放
         self.sound_playing = False
-        
+
         # 等待声音线程结束
         if self.sound_thread:
             self.sound_thread.join(timeout=1)
-        
+
         # 销毁窗口
         self.window.destroy()
-        
+
         # 重置实例引用
         WarningSoundWindow.instance = None
 
@@ -5071,16 +5089,16 @@ class WarningSoundWindow:
 def handle_fish_bucket_full():
     """处理鱼桶满的情况"""
     global fish_bucket_full_detected, bucket_full_by_interval
-    
+
     # 在运行日志中提示
     print(f"🪣  [警告] 检测到: {FISH_BUCKET_FULL_TEXT}")
-    
+
     # 根据不同模式执行不同操作
     if bucket_detection_mode == "mode1":
         # 模式1：自动暂停
         # 播放警告音效
         play_fish_bucket_warning_sound()
-        
+
         # 停止脚本
         if run_event.is_set():
             toggle_run()
@@ -5090,30 +5108,30 @@ def handle_fish_bucket_full():
     elif bucket_detection_mode == "mode2":
         # 模式2：F键+左键模式 - 按下一次F键然后一直点击鼠标左键，遇到键盘活动自动停止
         play_fish_bucket_warning_sound()
-        
+
         try:
             # 按下一次F键
-            keyboard_controller.press(keyboard.KeyCode.from_char('f'))
+            keyboard_controller.press(keyboard.KeyCode.from_char("f"))
             time.sleep(0.1)
-            keyboard_controller.release(keyboard.KeyCode.from_char('f'))
+            keyboard_controller.release(keyboard.KeyCode.from_char("f"))
             print("⌨️  [操作] 已按下F键")
-            
+
             # 键盘活动标志
             keyboard_activity = [False]
-            
+
             # 键盘按下事件处理
             def on_key_press(key):
                 """键盘按下事件处理"""
                 print("⌨️  [检测] 键盘活动，停止鼠标点击")
                 keyboard_activity[0] = True
                 return False  # 停止监听器
-            
+
             # 启动键盘监听器
             keyboard_listener = keyboard.Listener(on_press=on_key_press)
             keyboard_listener.start()
-            
+
             print("🖱️  [操作] 开始连续点击鼠标左键，1秒/次，直到检测到键盘活动")
-            
+
             # 一直点击鼠标左键，直到检测到键盘活动
             while not keyboard_activity[0] and keyboard_listener.is_alive():
                 # 点击鼠标左键
@@ -5121,9 +5139,9 @@ def handle_fish_bucket_full():
                 time.sleep(0.1)  # 按下持续时间
                 mouse_controller.release(mouse.Button.left)
                 time.sleep(0.9)  # 点击间隔，总间隔1秒
-            
+
             print("🖱️  [操作] 已停止连续点击鼠标左键")
-            
+
             # 停止键盘监听器
             if keyboard_listener.is_alive():
                 keyboard_listener.stop()
@@ -5134,17 +5152,18 @@ def handle_fish_bucket_full():
     elif bucket_detection_mode == "mode3":
         # 模式3：仅F键模式 - 不会自动暂停，只会按下一次F键
         play_fish_bucket_warning_sound()
-        
+
         try:
             # 按下一次F键
-            keyboard_controller.press(keyboard.KeyCode.from_char('f'))
+            keyboard_controller.press(keyboard.KeyCode.from_char("f"))
             time.sleep(0.1)
-            keyboard_controller.release(keyboard.KeyCode.from_char('f'))
+            keyboard_controller.release(keyboard.KeyCode.from_char("f"))
             print("⌨️  [操作] 已按下F键")
         except Exception as e:
             print(f"❌ [错误] 执行仅F键模式时出错: {e}")
         # 模式3不自动暂停，重置检测状态
         reset_fish_bucket_full_detection()
+
 
 def reset_fish_bucket_full_detection():
     """重置鱼桶满检测状态"""
@@ -5157,45 +5176,47 @@ def reset_fish_bucket_full_detection():
 
 def bucket_full_detection_thread():
     """鱼桶满独立检测线程
-    
+
     定期检查抛竿时间戳，计算连续抛竿间隔，当连续4次抛竿间隔在±0.15秒范围内时，判断鱼桶已满/没鱼饵/没鱼饵
     """
     global fish_bucket_full_detected, bucket_full_by_interval
-    
+
     while True:
         if not run_event.is_set():
             time.sleep(0.5)
             continue
-        
+
         try:
             # 检查是否已经检测到鱼桶满
             if fish_bucket_full_detected:
                 time.sleep(0.5)
                 continue
-            
+
             with casting_interval_lock:
                 # 复制时间戳列表，避免在计算过程中被修改
                 timestamps = casting_timestamps.copy()
-            
+
             # 需要至少REQUIRED_CONSECUTIVE_MATCHES+1个时间戳才能计算REQUIRED_CONSECUTIVE_MATCHES个间隔
             if len(timestamps) < REQUIRED_CONSECUTIVE_MATCHES + 1:
                 time.sleep(0.5)
                 continue
-            
+
             # 计算连续抛竿间隔
             intervals = []
             for i in range(1, len(timestamps)):
-                interval = timestamps[i] - timestamps[i-1]
+                interval = timestamps[i] - timestamps[i - 1]
                 intervals.append(interval)
-            
+
             # 检查是否有连续REQUIRED_CONSECUTIVE_MATCHES个间隔在阈值范围内
             consecutive_matches = 0
             for i in range(1, len(intervals)):
                 # 计算相邻间隔的差值
-                interval_diff = abs(intervals[i] - intervals[i-1])
+                interval_diff = abs(intervals[i] - intervals[i - 1])
                 if interval_diff <= CASTING_INTERVAL_THRESHOLD:
                     consecutive_matches += 1
-                    if consecutive_matches >= REQUIRED_CONSECUTIVE_MATCHES - 1:  # 需要连续4个间隔，所以需要3个差值匹配
+                    if (
+                        consecutive_matches >= REQUIRED_CONSECUTIVE_MATCHES - 1
+                    ):  # 需要连续4个间隔，所以需要3个差值匹配
                         # 检测到鱼桶满
                         bucket_full_by_interval = True
                         fish_bucket_full_detected = True
@@ -5203,12 +5224,13 @@ def bucket_full_detection_thread():
                         break
                 else:
                     consecutive_matches = 0
-            
+
             time.sleep(0.5)  # 每0.5秒检查一次
-            
+
         except Exception as e:
             print(f"⚠️  [警告] 鱼桶满检测线程出错: {e}")
             time.sleep(1)  # 出错时延长检查间隔
+
 
 def get_session_fish_list():
     """获取当前会话的钓鱼记录"""
@@ -6185,12 +6207,13 @@ def toggle_run():
         # 播放暂停提示音（叮一声）
         try:
             import winsound
+
             winsound.Beep(1000, 200)  # 频率1000Hz，持续200ms，模拟叮的声音
         except Exception as e:
             print(f"⚠️  [警告] 播放暂停提示音失败: {e}")
             # 备选方案：使用控制台铃声
             try:
-                print('\a', end='', flush=True)  # 控制台铃声
+                print("\a", end="", flush=True)  # 控制台铃声
             except:
                 pass
     else:
@@ -6210,12 +6233,13 @@ def toggle_run():
                     # 播放开始提示音（叮一声）
                     try:
                         import winsound
+
                         winsound.Beep(1500, 200)  # 频率1500Hz，持续200ms，模拟叮的声音
                     except Exception as e:
                         print(f"⚠️  [警告] 播放开始提示音失败: {e}")
                         # 备选方案：使用控制台铃声
                         try:
-                            print('\a', end='', flush=True)  # 控制台铃声
+                            print("\a", end="", flush=True)  # 控制台铃声
                         except:
                             pass
                 else:
@@ -6236,12 +6260,13 @@ def toggle_run():
             # 播放继续提示音（叮一声）
             try:
                 import winsound
+
                 winsound.Beep(1500, 200)  # 频率1500Hz，持续200ms，模拟叮的声音
             except Exception as e:
                 print(f"⚠️  [警告] 播放继续提示音失败: {e}")
                 # 备选方案：使用控制台铃声
                 try:
-                    print('\a', end='', flush=True)  # 控制台铃声
+                    print("\a", end="", flush=True)  # 控制台铃声
                 except:
                     pass
 
@@ -6286,7 +6311,7 @@ def check_hotkey_match(key):
         main_key_match = True
     if key == uno_hotkey_main_key:
         uno_key_match = True
-    
+
     # 虚拟键码比较
     elif hasattr(key, "vk"):
         # 检查主热键
@@ -6297,7 +6322,7 @@ def check_hotkey_match(key):
         if hasattr(uno_hotkey_main_key, "vk") and uno_hotkey_main_key.vk is not None:
             if key.vk is not None:
                 uno_key_match = key.vk == uno_hotkey_main_key.vk
-    
+
     # 字符键比较（忽略大小写）
     elif hasattr(key, "char") and key.char:
         # 检查主热键
@@ -6306,7 +6331,7 @@ def check_hotkey_match(key):
         # 检查UNO热键
         if hasattr(uno_hotkey_main_key, "char") and uno_hotkey_main_key.char:
             uno_key_match = key.char.lower() == uno_hotkey_main_key.char.lower()
-    
+
     # 鼠标按键比较
     elif isinstance(key, mouse.Button):
         # 检查主热键
@@ -6322,7 +6347,7 @@ def check_hotkey_match(key):
         if current_modifiers == hotkey_modifiers:
             toggle_run()  # 暂停或恢复程序
             return
-    
+
     # 处理UNO热键匹配
     if uno_key_match:
         # 检查修饰键是否匹配
@@ -6337,9 +6362,9 @@ def start_hotkey_listener():
     # 启动键盘监听器，设置suppress=False允许事件传递，确保全局监听
     if listener is None or not listener.running:
         listener = keyboard.Listener(
-            on_press=on_press, 
+            on_press=on_press,
             on_release=on_release,
-            suppress=False  # 不抑制事件，允许其他应用程序接收按键
+            suppress=False,  # 不抑制事件，允许其他应用程序接收按键
         )
         listener.daemon = True
         listener.start()
@@ -6352,7 +6377,7 @@ def start_hotkey_listener():
     ):
         mouse_listener = mouse.Listener(
             on_click=on_mouse_press,
-            suppress=False  # 不抑制事件，允许其他应用程序接收鼠标事件
+            suppress=False,  # 不抑制事件，允许其他应用程序接收鼠标事件
         )
         mouse_listener.daemon = True
         mouse_listener.start()
@@ -6430,9 +6455,11 @@ def main():
     # 启动加时处理线程
     jiashi_thread = threading.Thread(target=handle_jiashi_thread, daemon=True)
     jiashi_thread.start()
-    
+
     # 启动鱼桶满独立检测线程
-    bucket_full_thread = threading.Thread(target=bucket_full_detection_thread, daemon=True)
+    bucket_full_thread = threading.Thread(
+        target=bucket_full_detection_thread, daemon=True
+    )
     bucket_full_thread.start()
 
     while True:
@@ -6459,7 +6486,7 @@ def main():
                         # 保持列表长度不超过所需次数+1（用于计算间隔）
                         if len(casting_timestamps) > REQUIRED_CONSECUTIVE_MATCHES + 1:
                             casting_timestamps.pop(0)
-                    
+
                     user32.mouse_event(0x02, 0, 0, 0, 0)
                     jittered_pao = add_jitter(paogantime)
                     time.sleep(jittered_pao)
@@ -6543,7 +6570,10 @@ if __name__ == "__main__":
     )
     print(f"║  ⌨️ 快捷键: {hotkey_name}启动/暂停脚本".ljust(43) + "║")
     print(f"║  🎲 时间抖动: ±{JITTER_RANGE}%".ljust(46) + "║")
-    print(f"║  🪣 鱼桶满检测: {'✅ 已启用' if OCR_AVAILABLE else '❌ 未启用'}".ljust(46)+"║")
+    print(
+        f"║  🪣 鱼桶满检测: {'✅ 已启用' if OCR_AVAILABLE else '❌ 未启用'}".ljust(46)
+        + "║"
+    )
     print("║  🔧 开发者: FadedTUMI/PeiXiaoXiao/MaiDong".ljust(47) + "║")
     print("╚" + "═" * 50 + "╝")
     print()
