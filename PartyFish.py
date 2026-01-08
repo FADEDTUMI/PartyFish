@@ -750,7 +750,9 @@ def load_parameters():
             # 加载鱼桶检测模式
             bucket_detection_mode = params.get("bucket_detection_mode", "mode1")
             # 加载鱼饵识别算法
-            bait_recognition_algorithm = params.get("bait_recognition_algorithm", "template")
+            bait_recognition_algorithm = params.get(
+                "bait_recognition_algorithm", "template"
+            )
             # 加载热键设置（新格式支持组合键）
             saved_hotkey = params.get("hotkey", "F2")
             try:
@@ -1008,13 +1010,38 @@ def update_parameters(
             print(f"┌" + "─" * 48 + "┐")
             print(f"│  ⚙️  参数更新成功                               │")
             print(f"├" + "─" * 48 + "┤")
-            print(f"│  ⏱️  循环间隔: {t:.1f}s    📍 收线: {leftclickdown:.1f}s    📍 放线: {leftclickup:.1f}s".ljust(40)+"│")
-            print(f"│  🎣 最大拉杆: {times}次     ⏳ 抛竿: {paogantime:.1f}s    {'✅' if jiashi_var else '❌'} 加时: {'是' if jiashi_var else '否'}".ljust(40)+"│")
-            print(f"│  🖥️  分辨率: {resolution_choice} ({TARGET_WIDTH}×{TARGET_HEIGHT})".ljust(40)+"│")
-            print(f"│  📐 缩放比例: X={SCALE_X:.2f}  Y={SCALE_Y:.2f}  统一={SCALE_UNIFORM:.2f}".ljust(40)+"│")
-            print(f"│  🎯 鱼饵识别算法: {bait_recognition_algorithms[bait_recognition_algorithm]}".ljust(40)+"│")
-            print(f"│  ⌨️  热键: {hotkey_name}".ljust(40)+"│")
-            print(f"│  🎲 时间抖动: ±{JITTER_RANGE}%".ljust(40)+"│")
+            print(
+                f"│  ⏱️  循环间隔: {t:.1f}s    📍 收线: {leftclickdown:.1f}s    📍 放线: {leftclickup:.1f}s".ljust(
+                    40
+                )
+                + "│"
+            )
+            print(
+                f"│  🎣 最大拉杆: {times}次     ⏳ 抛竿: {paogantime:.1f}s    {'✅' if jiashi_var else '❌'} 加时: {'是' if jiashi_var else '否'}".ljust(
+                    40
+                )
+                + "│"
+            )
+            print(
+                f"│  🖥️  分辨率: {resolution_choice} ({TARGET_WIDTH}×{TARGET_HEIGHT})".ljust(
+                    40
+                )
+                + "│"
+            )
+            print(
+                f"│  📐 缩放比例: X={SCALE_X:.2f}  Y={SCALE_Y:.2f}  统一={SCALE_UNIFORM:.2f}".ljust(
+                    40
+                )
+                + "│"
+            )
+            print(
+                f"│  🎯 鱼饵识别算法: {bait_recognition_algorithms[bait_recognition_algorithm]}".ljust(
+                    40
+                )
+                + "│"
+            )
+            print(f"│  ⌨️  热键: {hotkey_name}".ljust(40) + "│")
+            print(f"│  🎲 时间抖动: ±{JITTER_RANGE}%".ljust(40) + "│")
             print(f"└" + "─" * 48 + "┘")
             # 保存到文件
             save_parameters()
@@ -2095,7 +2122,7 @@ def create_gui():
     # 算法选择下拉框
     # 设置当前算法的中文名称
     current_algorithm_name = bait_recognition_algorithms[bait_recognition_algorithm]
-    
+
     algorithm_combo = ttkb.Combobox(
         algorithm_frame,
         textvariable=bait_algorithm_var,
@@ -2126,12 +2153,14 @@ def create_gui():
         algorithm_name_to_key = {v: k for k, v in bait_recognition_algorithms.items()}
         # 根据中文名称获取对应的英文键名
         selected_algorithm_key = algorithm_name_to_key[selected_algorithm_name]
-        
+
         if selected_algorithm_key != bait_recognition_algorithm:
             bait_recognition_algorithm = selected_algorithm_key
             # 保存设置
             save_parameters()
-            print(f"⚙️  [配置] 鱼饵识别算法已切换为: {selected_algorithm_key} ({selected_algorithm_name})")
+            print(
+                f"⚙️  [配置] 鱼饵识别算法已切换为: {selected_algorithm_key} ({selected_algorithm_name})"
+            )
 
     # 绑定算法选择变化事件
     algorithm_combo.bind("<<ComboboxSelected>>", on_algorithm_change)
@@ -4020,7 +4049,7 @@ def scale_point(x, y):
 def scale_position(x, y, w=0, h=0, anchor="center", coordinate_type="point"):
     """
     统一的位置缩放函数，支持多种锚定方式和坐标类型
-    
+
     Args:
         x: 基础X坐标
         y: 基础Y坐标
@@ -4028,7 +4057,7 @@ def scale_position(x, y, w=0, h=0, anchor="center", coordinate_type="point"):
         h: 高度（可选，用于区域或尺寸计算）
         anchor: 锚定方式，可选值："center", "bottom_right", "top_left", "top_right", "bottom_left", "bottom_center", "top_center"
         coordinate_type: 坐标类型，可选值："point"（单点）, "region"（区域）
-        
+
     Returns:
         根据coordinate_type返回不同结果：
         - "point": (scaled_x, scaled_y) 单点坐标
@@ -4150,31 +4179,37 @@ def scale_corner_anchored(base_x, base_y, base_w, base_h, anchor="bottom_right")
     """
     缩放锚定在角落的UI元素坐标
     游戏UI（如鱼饵数量）通常锚定在屏幕角落而不是按比例缩放
-    
+
     兼容旧代码，调用统一的scale_position函数
 
     anchor: "bottom_right", "top_left", "center" 等
     """
-    return scale_position(base_x, base_y, base_w, base_h, anchor=anchor, coordinate_type="region")
+    return scale_position(
+        base_x, base_y, base_w, base_h, anchor=anchor, coordinate_type="region"
+    )
 
 
 def scale_coords_bottom_anchored(base_x, base_y, base_w, base_h):
     """
     缩放锚定在底部中央的UI元素坐标
     游戏UI（如F1/F2按钮）通常锚定在屏幕底部中央
-    
+
     兼容旧代码，调用统一的scale_position函数
     """
-    return scale_position(base_x, base_y, base_w, base_h, anchor="bottom_center", coordinate_type="region")
+    return scale_position(
+        base_x, base_y, base_w, base_h, anchor="bottom_center", coordinate_type="region"
+    )
 
 
 def scale_coords_center_anchored(base_x, base_y, base_w, base_h):
     """
     使用中心锚定方式缩放区域坐标（适用于居中UI元素如加时检测区域）
-    
+
     兼容旧代码，调用统一的scale_position函数
     """
-    return scale_position(base_x, base_y, base_w, base_h, anchor="center", coordinate_type="region")
+    return scale_position(
+        base_x, base_y, base_w, base_h, anchor="center", coordinate_type="region"
+    )
 
 
 # =========================
@@ -4299,8 +4334,9 @@ bait_recognition_algorithms = {
     "template": "模板匹配算法",
     "ocr": "OCR识别算法",
     "contour": "轮廓特征算法",
-    "pixel": "像素统计算法"
+    "pixel": "像素统计算法",
 }
+
 
 # =========================
 # 鱼饵识别器类
@@ -4309,36 +4345,36 @@ class BaitRecognizer:
     """
     鱼饵识别器类，支持多种识别算法
     """
-    
+
     def __init__(self):
         """初始化鱼饵识别器"""
         # 初始化模板（如果使用模板匹配算法）
         self.templates = []
         self._load_templates()
-    
+
     def _load_templates(self):
         """加载数字模板"""
         # 这里可以根据实际情况加载模板
         # 由于模板匹配算法需要实际的模板文件，这里简化处理
         pass
-    
+
     def recognize(self, image, algorithm="template"):
         """
         使用指定算法识别鱼饵数量
-        
+
         Args:
             image: 截取的鱼饵区域图像（RGBA格式的NumPy数组）
             algorithm: 使用的识别算法，可选值："template", "ocr", "contour", "pixel"
-            
+
         Returns:
             int: 识别出的鱼饵数量，如果识别失败则返回None
         """
         if image is None:
             return None
-        
+
         # 转换为灰度图像
         gray_img = cv2.cvtColor(image, cv2.COLOR_RGBA2GRAY)
-        
+
         # 根据选择的算法进行识别
         if algorithm == "template":
             return self._recognize_template(gray_img)
@@ -4351,14 +4387,14 @@ class BaitRecognizer:
         else:
             # 默认使用模板匹配算法
             return self._recognize_template(gray_img)
-    
+
     def _recognize_template(self, gray_img):
         """
         使用模板匹配算法识别鱼饵数量
-        
+
         Args:
             gray_img: 灰度图像
-            
+
         Returns:
             int: 识别出的鱼饵数量，如果识别失败则返回None
         """
@@ -4392,7 +4428,7 @@ class BaitRecognizer:
         mid_end = min(mid_start + crop_w, img_w)
         region3 = gray_img[0:crop_h, mid_start:mid_end]
         best_match3 = match_digit_template(region3)
-        
+
         if best_match1 and best_match2:
             # 从best_match中提取数字索引（i），并拼接成整数
             best_match1_val = best_match1[0]  # 提取区域1的数字索引
@@ -4400,83 +4436,87 @@ class BaitRecognizer:
             # 拼接两个匹配的数字，转换为整数
             return int(f"{best_match1_val}{best_match2_val}")
         elif best_match3:
-            return int(f'{best_match3[0]}')
+            return int(f"{best_match3[0]}")
         else:
             return None
-    
+
     def _match_digit_template(self, image):
         """匹配数字模板
-        
+
         Args:
             image: 待匹配的图像
-            
+
         Returns:
             tuple: (匹配的数字索引, 匹配位置)，如果匹配失败则返回None
         """
         best_match = None  # 最佳匹配信息
         best_val = 0  # 存储最佳匹配度
-        
+
         # 这里应该使用实际的模板，目前简化处理
         # 实际实现中应该加载预定义的数字模板
         for i in range(10):
             # 简化处理，假设模板匹配成功
             # 实际实现中应该使用cv2.matchTemplate进行匹配
             pass
-        
+
         # 这里返回None表示需要使用实际模板才能进行匹配
         # 实际实现中应该返回最佳匹配结果
         return None
-    
+
     def _recognize_ocr(self, image):
         """
         使用OCR算法识别鱼饵数量
-        
+
         Args:
             image: 原始图像
-            
+
         Returns:
             int: 识别出的鱼饵数量，如果识别失败则返回None
         """
         if not OCR_AVAILABLE or ocr_engine is None:
             return None
-        
+
         try:
             # 将RGBA图像转换为RGB
             img_rgb = cv2.cvtColor(image, cv2.COLOR_RGBA2RGB)
             # 使用OCR识别文本
             result = ocr_engine(img_rgb)
-            
+
             if result and len(result) > 0:
                 for line in result:
                     text = line[1][0]
                     # 提取数字
-                    digits = re.findall(r'\d+', text)
+                    digits = re.findall(r"\d+", text)
                     if digits:
                         return int(digits[0])
         except Exception as e:
             if debug_mode:
                 print(f"⚠️  [OCR] 识别失败: {e}")
         return None
-    
+
     def _recognize_contour(self, gray_img):
         """
         使用轮廓特征算法识别鱼饵数量
-        
+
         Args:
             gray_img: 灰度图像
-            
+
         Returns:
             int: 识别出的鱼饵数量，如果识别失败则返回None
         """
         try:
             # 二值化处理
-            _, thresh = cv2.threshold(gray_img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+            _, thresh = cv2.threshold(
+                gray_img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU
+            )
             # 查找轮廓
-            contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-            
+            contours, _ = cv2.findContours(
+                thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+            )
+
             # 过滤小轮廓
             valid_contours = [cnt for cnt in contours if cv2.contourArea(cnt) > 10]
-            
+
             # 根据轮廓数量和特征识别数字
             # 这里简化处理，实际实现中应该根据轮廓特征进行更复杂的判断
             if len(valid_contours) == 1:
@@ -4489,14 +4529,14 @@ class BaitRecognizer:
             if debug_mode:
                 print(f"⚠️  [轮廓识别] 识别失败: {e}")
         return None
-    
+
     def _recognize_pixel(self, gray_img):
         """
         使用像素统计算法识别鱼饵数量
-        
+
         Args:
             gray_img: 灰度图像
-            
+
         Returns:
             int: 识别出的鱼饵数量，如果识别失败则返回None
         """
@@ -4507,7 +4547,7 @@ class BaitRecognizer:
             total_count = gray_img.shape[0] * gray_img.shape[1]
             # 计算非零像素比例
             ratio = non_zero_count / total_count
-            
+
             # 根据比例识别数字
             # 这里简化处理，实际实现中应该根据实际情况调整阈值
             if ratio < 0.1:
@@ -4534,6 +4574,7 @@ class BaitRecognizer:
             if debug_mode:
                 print(f"⚠️  [像素统计] 识别失败: {e}")
         return None
+
 
 # 创建全局鱼饵识别器实例
 bait_recognizer = BaitRecognizer()
@@ -5562,7 +5603,7 @@ def handle_fish_bucket_full():
             while not keyboard_activity[0] and keyboard_listener.is_alive():
                 # 定义WASD键列表
                 keys = ["w", "a", "s", "d"]
-                
+
                 # 循环点击每个键
                 for key in keys:
                     # 点击键
@@ -5571,7 +5612,7 @@ def handle_fish_bucket_full():
                     keyboard_controller.release(keyboard.KeyCode.from_char(key))
                     print(f"⌨️  [操作] 已点击{key}键")
                     time.sleep(0.5)  # 键之间的间隔
-                
+
                 time.sleep(0.5)
 
             print("⌨️  [操作] 已停止WASD循环点击")
@@ -6460,7 +6501,9 @@ def bait_math_val(scr):
         # 记录日志：识别结果
         if debug_mode:
             debug_info = {
-                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[:-3],
+                "timestamp": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")[
+                    :-3
+                ],
                 "action": "bait_recognition_result",
                 "message": "鱼饵识别完成",
                 "result": result_val_is,
@@ -6949,9 +6992,13 @@ def main():
 
                 # 检测F1/F2抛竿
                 if f1_mached(scr) or f2_mached(scr):
-                    # 【重要】不再在这里记录抛竿时间
-                    # 改为在完成钓鱼循环后记录完整时间
-
+                    # 在这里记录抛竿时间
+                    current_time = time.time()
+                    with casting_interval_lock:
+                        casting_timestamps.append(current_time)
+                        # 保持队列长度，防止内存泄露
+                        if len(casting_timestamps) > 20:
+                            casting_timestamps.pop(0)
                     user32.mouse_event(0x02, 0, 0, 0, 0)
                     jittered_pao = add_jitter(paogantime)
                     time.sleep(jittered_pao)
@@ -6997,19 +7044,7 @@ def main():
                     # 钓到鱼后，识别并记录鱼的信息
                     if OCR_AVAILABLE and record_fish_enabled:
                         try:
-                            fish_record = record_caught_fish()
-
-                            # 记录完整钓鱼循环的结束时间
-                            # 只有在成功记录鱼信息后才记录时间戳
-                            if fish_record:
-                                current_time = time.time()
-                                with casting_interval_lock:
-                                    casting_timestamps.append(current_time)
-                                    # 保持队列长度，防止内存泄露
-                                    if len(casting_timestamps) > 20:
-                                        casting_timestamps.pop(0)
-
-                                print(f"⏱️  [计时] 钓鱼循环完成，耗时记录")
+                            record_caught_fish()
                         except Exception as e:
                             print(f"⚠️  [警告] 记录鱼信息失败: {e}")
                 elif comparison_result == 1:
@@ -7051,7 +7086,12 @@ if __name__ == "__main__":
         f"║  🪣 鱼桶满检测: {'✅ 已启用' if OCR_AVAILABLE else '❌ 未启用'}".ljust(46)
         + "║"
     )
-    print(f"║  🎯 鱼饵识别算法: {bait_recognition_algorithms[bait_recognition_algorithm]}".ljust(47) + "║")
+    print(
+        f"║  🎯 鱼饵识别算法: {bait_recognition_algorithms[bait_recognition_algorithm]}".ljust(
+            47
+        )
+        + "║"
+    )
     print("║  🔧 开发者: FadedTUMI/PeiXiaoXiao/MaiDong".ljust(47) + "║")
     print("╚" + "═" * 50 + "╝")
     print()
