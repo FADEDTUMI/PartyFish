@@ -5721,30 +5721,29 @@ def bucket_full_detection_thread():
             # 动态阈值计算：基于当前抛竿时间，确保正常循环不会被误判
             # - 基于当前抛竿时间的1.5倍
             # - 对于短抛竿时间，设置最小阈值2秒
-            dynamic_threshold = max(2.0, paogantime * 1.5)
+            dynamic_threshold = max(2.0, paogantime * 1)
 
-            if last_interval < dynamic_threshold:
+            if last_interval < dynamic_threshold and len(timestamps) >= 3:  # 需要至少3个时间戳来确认
                 short_cycle_count += 1
                 print(
                     f"⚠️  [检测] 检测到短循环 #{short_cycle_count}: {last_interval:.2f}秒 (<{dynamic_threshold:.2f}秒)"
                 )
 
-                # 连续3次短循环才判定为鱼桶满
-                REQUIRED_SHORT_CYCLES = 3
+                # 连续5次短循环才判定为鱼桶满，提高准确率
+                REQUIRED_SHORT_CYCLES = 5
                 if (
                     short_cycle_count >= REQUIRED_SHORT_CYCLES
                     and not fish_bucket_full_detected
                     and not bucket_full_by_interval
                 ):
-                    # 额外验证：检查所有记录的循环是否都异常短
-                    all_short = True
-                    for i in range(1, len(timestamps)):
-                        interval = timestamps[i] - timestamps[i-1]
-                        if interval >= dynamic_threshold:
-                            all_short = False
-                            break
+                    # 额外验证：检查最近5次循环是否都异常短
+                    recent_short = 0
+                    for i in range(1, min(len(timestamps), 6)):  # 检查最近5次循环
+                        interval = timestamps[-i] - timestamps[-(i+1)]
+                        if interval < dynamic_threshold:
+                            recent_short += 1
                     
-                    if all_short or len(timestamps) <= 5:  # 对于少量记录，直接判定
+                    if recent_short >= 4:  # 最近5次中有4次以上短循环才判定
                         print(
                             f"🪣  [警告] 连续{short_cycle_count}次短循环，判定为鱼桶满/没鱼饵！"
                         )
@@ -7009,11 +7008,19 @@ def main():
     )
     bucket_full_thread.start()
 
+    # 抛竿时间戳记录标志位，防止同一抛竿事件重复记录
+    last_cast_recorded = False
+
     while True:
         if run_event.is_set():
+            # 脚本从暂停状态恢复时，重置抛竿记录标志位
+            last_cast_recorded = False
             scr = None
             try:
                 scr = mss.mss()
+                if scr is None:
+                    time.sleep(0.1)
+                    continue
 
                 # 先检查是否需要处理加时
                 if handle_jiashi_in_action(scr):
@@ -7025,24 +7032,29 @@ def main():
                     continue
 
                 # 检测F1/F2抛竿
-                if f1_mached(scr) or f2_mached(scr):
-                    # 在这里记录抛竿时间
-                    current_time = time.time()
-                    with casting_interval_lock:
-                        casting_timestamps.append(current_time)
-                        # 保持队列长度，防止内存泄露
-                        if len(casting_timestamps) > 20:
-                            casting_timestamps.pop(0)
-                    user32.mouse_event(0x02, 0, 0, 0, 0)
-                    jittered_pao = add_jitter(paogantime)
-                    time.sleep(jittered_pao)
-                    print_timing_info("抛竿", paogantime, jittered_pao)
-                    user32.mouse_event(0x04, 0, 0, 0, 0)
-                    time.sleep(0.15)
+                is_casting = f1_mached(scr) or f2_mached(scr)
+                
+                if is_casting:
+                    # 只有当之前没有处理过这次抛竿时，才执行抛竿操作
+                    if not last_cast_recorded:
+                        # 设置标志位，表示已经处理过这次抛竿
+                        last_cast_recorded = True
+                        
+                        user32.mouse_event(0x02, 0, 0, 0, 0)
+                        jittered_pao = add_jitter(paogantime)
+                        time.sleep(jittered_pao)
+                        print_timing_info("抛竿", paogantime, jittered_pao)
+                        user32.mouse_event(0x04, 0, 0, 0, 0)
+                        time.sleep(0.15)
                 elif shangyu_mached(scr):
                     user32.mouse_event(0x02, 0, 0, 0, 0)
                     time.sleep(0.1)
                     user32.mouse_event(0x04, 0, 0, 0, 0)
+                    # 重置标志位，因为不是抛竿状态
+                    last_cast_recorded = False
+                else:
+                    # 重置标志位，因为不是抛竿状态
+                    last_cast_recorded = False
 
                 time.sleep(0.05)
 
@@ -7084,6 +7096,21 @@ def main():
                             record_caught_fish()
                         except Exception as e:
                             print(f"⚠️  [警告] 记录鱼信息失败: {e}")
+                    
+                    # 在完整钓鱼循环结束时记录时间戳，而非抛竿时
+                    with casting_interval_lock:
+                        # 移除可能的无效短间隔
+                        if len(casting_timestamps) > 1:
+                            last_interval = casting_timestamps[-1] - casting_timestamps[-2]
+                            # 如果最后一个间隔太短，替换为当前时间
+                            if last_interval < 1.0:
+                                casting_timestamps.pop()
+                        
+                        # 添加完整钓鱼循环结束的时间戳
+                        casting_timestamps.append(time.time())
+                        # 保持队列长度，防止内存泄露
+                        if len(casting_timestamps) > 20:
+                            casting_timestamps.pop(0)
                 elif comparison_result == 1:
                     previous_result = current_result
                     # continue会在finally中关闭scr
