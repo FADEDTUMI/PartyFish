@@ -1,0 +1,36 @@
+# Python 缓存文件
+__pycache__/
+*.py[cod]
+
+# 虚拟环境
+venv/
+env/
+
+# IDE 配置
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# 构建产物
+build/
+dist/
+Partyfish.spec
+
+# 备份文件夹
+backup/
+
+# 用户生成的数据文件
+fish_records.txt
+
+# 本地配置文件
+parameters.json
+
+# 临时/缓存文件
+*.log
+*.tmp
+*.temp
+
+# 系统文件
+.DS_Store
+Thumbs.db
