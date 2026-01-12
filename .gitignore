@@ -21,10 +21,10 @@ Partyfish.spec
 backup/
 
 # 用户生成的数据文件
-fish_records.txt
+# fish_records.txt
 
 # 本地配置文件
-parameters.json
+# parameters.json
 
 # 临时/缓存文件
 *.log

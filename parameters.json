@@ -1,0 +1,51 @@
+{
+    "config_names": [
+        "\u914d\u7f6e1",
+        "\u914d\u7f6e2",
+        "\u914d\u7f6e3",
+        "\u914d\u7f6e4"
+    ],
+    "config_params": [
+        {
+            "t": 0.3,
+            "leftclickdown": 2.5,
+            "leftclickup": 2.0,
+            "times": 15,
+            "paogantime": 0.5
+        },
+        {
+            "t": 0.3,
+            "leftclickdown": 2.0,
+            "leftclickup": 1.5,
+            "times": 20,
+            "paogantime": 0.5
+        },
+        {
+            "t": 0.2,
+            "leftclickdown": 0.4,
+            "leftclickup": 0.2,
+            "times": 50,
+            "paogantime": 0.1
+        },
+        {
+            "t": 0.2,
+            "leftclickdown": 1.5,
+            "leftclickup": 1.0,
+            "times": 25,
+            "paogantime": 0.5
+        }
+    ],
+    "current_config_index": 0,
+    "jiashi_var": 1,
+    "resolution": "1080P",
+    "custom_width": 1920,
+    "custom_height": 1080,
+    "hotkey": "F2",
+    "uno_hotkey": "F3",
+    "record_fish_enabled": true,
+    "legendary_screenshot_enabled": true,
+    "font_size": 100,
+    "jitter_range": 16,
+    "fish_bucket_sound_enabled": true,
+    "bucket_detection_mode": "mode1"
+}
