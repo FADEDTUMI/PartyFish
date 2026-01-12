@@ -1712,7 +1712,7 @@ def create_gui():
     # 加载保存的参数
     load_parameters()
     # 声明全局变量
-    global uno_input1_var, uno_input2_var, root
+    global uno_input1_var, uno_input2_var, uno_popup_shown, root
 
     # 创建现代化主题窗口
     root = ttkb.Window(themename="darkly")  # 使用深色主题
@@ -6032,6 +6032,7 @@ uno_input2_var = None
 # UNO持续识别相关变量
 uno_recognition_running = False  # 持续识别状态
 uno_recognition_thread = None  # 持续识别线程
+uno_popup_shown = False  # 弹窗显示标志，防止重复弹窗
 
 # 全局root变量声明
 root = None
@@ -6950,21 +6951,20 @@ def uno_process(scr):
 
         print(f"🎮 [UNO] 当前牌数: {current_cards}, 抽取牌数: {max_cards}")
 
-        # 如果当前牌数 < 抽取牌数，当前牌数+1
-        if current_cards < max_cards:
-            new_cards = current_cards + 1
-            uno_input1_var.set(new_cards)
-            print(f"🎮 [UNO] 牌数更新: {current_cards} → {new_cards}")
+        # 当前牌数+1
+        new_cards = current_cards + 1
+        uno_input1_var.set(new_cards)
+        print(f"🎮 [UNO] 牌数更新: {current_cards} → {new_cards}")
 
-            # 检查是否达到抽取牌数
-            if new_cards >= max_cards:
-                print(f"🎮 [UNO] 已达到抽取牌数: {new_cards}/{max_cards}")
-                # 显示弹窗
-                uno_show_popup()
-        elif current_cards >= max_cards:
-            print(f"🎮 [UNO] 已达到抽取牌数: {current_cards}/{max_cards}")
-            # 显示弹窗
-            uno_show_popup()
+        # 检查是否达到抽取牌数且未显示过弹窗
+        if new_cards >= max_cards and not uno_popup_shown:
+            print(f"🎮 [UNO] 已达到抽取牌数: {new_cards}/{max_cards}")
+            # 显示弹窗并获取用户选择
+            continue_operation = uno_show_popup()
+            # 如果用户选择暂停，返回False
+            if not continue_operation:
+                print(f"🎮 [UNO] 已暂停操作")
+                return False
 
         return True
     return False
@@ -6996,29 +6996,28 @@ def uno_continuous_recognition():
 
                 print(f"🎮 [UNO] 当前牌数: {current_cards}, 抽取牌数: {max_cards}")
 
-                # 如果当前牌数 < 抽取牌数，当前牌数+1并执行点击
-                if current_cards < max_cards:
-                    new_cards = current_cards + 1
-                    uno_input1_var.set(new_cards)
-                    print(f"🎮 [UNO] 牌数更新: {current_cards} → {new_cards}")
+                # 当前牌数+1并执行点击
+                new_cards = current_cards + 1
+                uno_input1_var.set(new_cards)
+                print(f"🎮 [UNO] 牌数更新: {current_cards} → {new_cards}")
 
-                    # 计算点击位置
-                    click_x, click_y = calculate_click_position()
+                # 计算点击位置
+                click_x, click_y = calculate_click_position()
 
-                    # 执行点击操作
-                    mouse_controller.position = (click_x, click_y)
-                    mouse_controller.click(mouse.Button.left, 1)
-                    print(f"🎮 [UNO] 执行点击: ({click_x}, {click_y})")
+                # 执行点击操作
+                mouse_controller.position = (click_x, click_y)
+                mouse_controller.click(mouse.Button.left, 1)
+                print(f"🎮 [UNO] 执行点击: ({click_x}, {click_y})")
 
-                    # 检查是否达到抽取牌数
-                    if new_cards >= max_cards:
-                        print(f"🎮 [UNO] 已达到抽取牌数: {new_cards}/{max_cards}")
-                        # 显示弹窗
-                        uno_show_popup()
-                elif current_cards >= max_cards:
-                    print(f"🎮 [UNO] 已达到抽取牌数: {current_cards}/{max_cards}")
-                    # 显示弹窗
-                    uno_show_popup()
+                # 检查是否达到抽取牌数且未显示过弹窗
+                if new_cards >= max_cards and not uno_popup_shown:
+                    print(f"🎮 [UNO] 已达到抽取牌数: {new_cards}/{max_cards}")
+                    # 显示弹窗并获取用户选择
+                    continue_operation = uno_show_popup()
+                    # 如果用户选择暂停，停止持续识别
+                    if not continue_operation:
+                        print(f"🎮 [UNO] 已暂停持续识别")
+                        uno_recognition_running = False
 
             # 延迟一段时间，避免过于频繁的识别
             time.sleep(0.5)
@@ -7036,9 +7035,16 @@ def uno_start_continuous_recognition():
 
     该函数负责创建和启动持续识别线程
     """
-    global uno_recognition_running, uno_recognition_thread
+    global uno_recognition_running, uno_recognition_thread, uno_input1_var, uno_popup_shown
 
     if not uno_recognition_running:
+        # 重置当前牌数为7
+        uno_input1_var.set(7)
+        print("🎮 [UNO] 当前牌数已重置为7")
+        
+        # 重置弹窗显示标志位
+        uno_popup_shown = False
+        
         # 设置识别状态为True
         uno_recognition_running = True
 
@@ -7085,13 +7091,16 @@ def uno_stop_continuous_recognition():
 def uno_show_popup():
     """显示UNO暂停/继续弹窗
 
-    弹窗3秒后自动选择继续
+    弹窗5秒后自动选择继续
     """
     # 不直接使用global root，改为检查root是否已定义
-    global root
+    global root, uno_popup_shown
     if root is None:
         print("⚠️ [UNO] 无法显示弹窗，root未定义")
         return
+
+    # 弹窗显示后设置标志位为True
+    uno_popup_shown = True
 
     # 创建弹窗
     popup = tk.Toplevel(root)
@@ -7099,6 +7108,7 @@ def uno_show_popup():
     popup.geometry("300x150")
     popup.resizable(False, False)
     popup.grab_set()  # 模态窗口
+    popup.attributes('-topmost', True)  # 弹窗置顶显示
 
     # 设置样式
     popup.configure(background="#2d3748")
@@ -7149,8 +7159,8 @@ def uno_show_popup():
     )
     continue_btn.pack(side=RIGHT, padx=10)
 
-    # 设置3秒自动继续
-    popup.after(3000, on_continue)
+    # 设置5秒自动继续
+    popup.after(5000, on_continue)
 
     # 等待弹窗关闭
     popup.wait_window()
