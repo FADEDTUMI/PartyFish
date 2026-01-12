@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Version](https://img.shields.io/badge/Version-v2.9.2-orange.svg)
+![Version](https://img.shields.io/badge/Version-v2.9.5-orange.svg)
 ![Platform](https://img.shields.io/badge/Platform-Windows%2010%2F11-lightgrey.svg)
 ![License](https://img.shields.io/badge/License-Apache%202.0-green.svg)
 ![Game](https://img.shields.io/badge/Game-猛兽派对%20Party%20Animals-blue.svg)
@@ -50,11 +50,11 @@ PartyFish 是一款基于图像识别的自动钓鱼工具，支持多分辨率�
 
 从以下渠道下载最新版本的 PartyFish：
 
-| 版本              | 下载链接                                               | 提取码 |
-| ----------------- | ------------------------------------------------------ | ------ |
-| **v2.0** (旧版本) | [🔗 蓝奏云下载](https://wwaqq.lanzouu.com/b0187zi2xg)  | `fish` |
-| **v2.9.3** (往期) | [🔗 蓝奏云 页面](https://wwasj.lanzouu.com/b00181gfve) | `fish` |
-| **v2.9.5** (最新) | [🔗 123网盘](https://www.123865.com/s/Ruv9-70EV) | `没密码` |
+| 版本              | 下载链接                                               | 提取码   |
+| ----------------- | ------------------------------------------------------ | -------- |
+| **v2.0** (旧版本) | [🔗 蓝奏云下载](https://wwaqq.lanzouu.com/b0187zi2xg)  | `fish`   |
+| **v2.9.3** (往期) | [🔗 蓝奏云 页面](https://wwasj.lanzouu.com/b00181gfve) | `fish`   |
+| **v2.9.5** (最新) | [🔗 123 网盘](https://www.123865.com/s/Ruv9-70EV)      | `没密码` |
 
 > 💡 也可以前往 [Releases 页面](https://github.com/FADEDTUMI/PartyFish/releases) 查看所有版本
 
@@ -142,22 +142,22 @@ PartyFish 是一款基于图像识别的自动钓鱼工具，支持多分辨率�
 
 ```
 PartyFish/
-├── PartyFish.py          # 主程序文件
-├── PartyFish. spec        # PyInstaller 打包配置
-├── 666.ico               # 程序图标
-├── .history/              #备份
-├── build. bat            # 一键打包脚本
-├── parameters.json       # 参数配置文件（自动生成）
-├── fish_records. txt      # 钓鱼记录文件（自动生成）
-├── resources/            # 模板图像资源目录
-│   ├── 0-9_grayscale.png # 数字识别模板
-│   ├── F1_grayscale. png  # F1 按键模板
-│   ├── F2_grayscale.png  # F2 按键模板
-│   ├── star_grayscale. png # 星星（上鱼）模板
+├── PartyFish.py               # 主程序文件
+├── 666.ico                    # 程序图标
+├── .gitignore                 # Git 忽略配置
+├── build.bat/ps1/py           # 一键打包脚本
+├── parameters.json            # 参数配置文件（自动生成）
+├── fish_records.txt           # 钓鱼记录文件（自动生成）
+├── resources/                 # 模板图像资源目录
+│   ├── 0-9_grayscale.png      # 数字识别模板
+│   ├── F1_grayscale. png      # F1 按键模板
+│   ├── F2_grayscale.png       # F2 按键模板
+│   ├── star_grayscale. png    # 星星（上鱼）模板
 │   ├── shangyu_grayscale. png # 上鱼图标模板
-│   └── chang_grayscale. png   # 加时界面模板
-├── LICENSE               # Apache 2.0 许可证
-└── README.md             # 说明文档
+│   └── chang_grayscale. png   # 加时模板
+    └── tiao_gray/tiao.png     # UNO模板
+├── LICENSE                    # Apache 2.0 许可证
+└── README.md                  # 说明文档
 ```
 
 ---
