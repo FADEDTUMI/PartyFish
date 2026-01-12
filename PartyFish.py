@@ -139,20 +139,20 @@ sound_manager = SimpleSoundManager()
 # 全局资源路径管理
 # =========================
 def get_icon_path():
-    """获取666.ico图标的路径，处理不同环境下的路径问题
+    """获取logo.ico图标的路径，处理不同环境下的路径问题
 
     Returns:
-        str: 666.ico图标的完整路径
+        str: logo.ico图标的完整路径
     """
     import sys
     import os
 
     if hasattr(sys, "_MEIPASS"):
         # 打包后直接在MEIPASS下查找
-        icon_path = os.path.join(sys._MEIPASS, "666.ico")
+        icon_path = os.path.join(sys._MEIPASS, "logo.ico")
     else:
         # 开发环境下直接使用当前目录
-        icon_path = "666.ico"
+        icon_path = "logo.ico"
 
     return icon_path
 
