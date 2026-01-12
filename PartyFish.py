@@ -5884,20 +5884,21 @@ def bucket_full_detection_thread():
                     and not fish_bucket_full_detected
                     and not bucket_full_by_interval
                 ):
-                    # 额外验证：检查所有记录的循环是否都异常短
-                    all_short = True
-                    for i in range(1, len(timestamps)):
-                        interval = timestamps[i] - timestamps[i - 1]
-                        if interval >= dynamic_threshold:
-                            all_short = False
-                            break
-
-                    if all_short or len(timestamps) <= 5:  # 对于少量记录，直接判定
+                    # 优化验证：只检查最近5次循环，避免因历史记录导致的误判
+                    recent_short_count = 0
+                    check_count = min(5, len(timestamps) - 1)  # 最多检查最近5次循环
+                    for i in range(1, check_count + 1):
+                        interval = timestamps[-i] - timestamps[-(i+1)]
+                        if interval < dynamic_threshold:
+                            recent_short_count += 1
+                        
+                    # 如果最近3次都是短循环，就判定为鱼桶满
+                    if recent_short_count >= 3:
                         print(
                             f"🪣  [警告] 连续{short_cycle_count}次短循环，判定为鱼桶满/没鱼饵！"
                         )
                         print(
-                            f"   最近{len(timestamps)}次循环时长: {[round(timestamps[i]-timestamps[i-1], 2) for i in range(1, len(timestamps))]}"
+                            f"   最近{check_count}次循环时长: {[round(timestamps[-i]-timestamps[-(i+1)], 2) for i in range(1, check_count + 1)]}"
                         )
 
                         bucket_full_by_interval = True
