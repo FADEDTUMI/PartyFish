@@ -897,7 +897,7 @@ def load_parameters():
         release_rare_enabled = params.get("release_rare_enabled", False)
         release_epic_enabled = params.get("release_epic_enabled", False)
         release_legendary_enabled = params.get("release_legendary_enabled", False)
-        
+
         # 加载热键设置（新格式支持组合键）
         saved_hotkey = params.get("hotkey", "F2")
         try:
@@ -911,7 +911,7 @@ def load_parameters():
             hotkey_name = "F2"
             hotkey_modifiers = set()
             hotkey_main_key = keyboard.Key.f2
-        
+
         # 加载UNO热键设置
         saved_uno_hotkey = params.get("uno_hotkey", "F3")
         try:
@@ -1091,7 +1091,7 @@ def update_parameters(
             # 更新时间抖动范围
             if jitter_var is not None:
                 JITTER_RANGE = int(jitter_var.get())
-            
+
             # 更新放生功能设置
             if release_enabled_var is not None:
                 release_fish_enabled = bool(release_enabled_var.get())
@@ -3271,7 +3271,7 @@ def create_gui():
     # 品质选择复选框
     release_quality_check_frame = ttkb.Frame(release_card)
     release_quality_check_frame.pack(fill=X, pady=4)
-    
+
     # 第一行：标准、非凡
     release_quality_row1 = ttkb.Frame(release_quality_check_frame)
     release_quality_row1.pack(fill=X, pady=1)
@@ -3285,7 +3285,7 @@ def create_gui():
         bootstyle="success",
     )
     standard_cb.pack(side=LEFT, padx=2)
-    
+
     # 非凡鱼
     release_uncommon_var = ttkb.BooleanVar(value=release_uncommon_enabled)
     uncommon_cb = ttkb.Checkbutton(
@@ -3295,11 +3295,11 @@ def create_gui():
         bootstyle="success",
     )
     uncommon_cb.pack(side=LEFT, padx=2)
-    
+
     # 第二行：稀有、史诗、传奇
     release_quality_row2 = ttkb.Frame(release_quality_check_frame)
     release_quality_row2.pack(fill=X, pady=1)
-    
+
     # 稀有鱼
     release_rare_var = ttkb.BooleanVar(value=release_rare_enabled)
     rare_cb = ttkb.Checkbutton(
@@ -3309,7 +3309,7 @@ def create_gui():
         bootstyle="success",
     )
     rare_cb.pack(side=LEFT, padx=2)
-    
+
     # 史诗鱼
     release_epic_var = ttkb.BooleanVar(value=release_epic_enabled)
     epic_cb = ttkb.Checkbutton(
@@ -3319,7 +3319,7 @@ def create_gui():
         bootstyle="success",
     )
     epic_cb.pack(side=LEFT, padx=2)
-    
+
     # 传奇鱼
     release_legendary_var = ttkb.BooleanVar(value=release_legendary_enabled)
     legendary_cb = ttkb.Checkbutton(
@@ -4539,70 +4539,78 @@ def release_fish():
     7. 按下ESC键
     """
     global release_fish_enabled, release_standard_enabled, release_uncommon_enabled, release_rare_enabled, release_epic_enabled, release_legendary_enabled
-    
+
     if not release_fish_enabled:
         return False
-    
+
     try:
         # 1. 按住C键
-        keyboard_controller.press(keyboard.KeyCode.from_char('c'))
+        keyboard_controller.press(keyboard.KeyCode.from_char("c"))
         time.sleep(1)
-        
+
         # 2. 把鼠标移动到1090,720（使用与鱼饵识别相同的缩放逻辑）
-        scaled_x1, scaled_y1 = scale_position(1090, 720, anchor="center", coordinate_type="point")
+        scaled_x1, scaled_y1 = scale_position(
+            1090, 720, anchor="center", coordinate_type="point"
+        )
         mouse_controller.position = (scaled_x1, scaled_y1)
         time.sleep(0.5)
-        
+
         # 3. 松开C键
-        keyboard_controller.release(keyboard.KeyCode.from_char('c'))
+        keyboard_controller.release(keyboard.KeyCode.from_char("c"))
         time.sleep(0.3)
 
         time.sleep(0.5)
 
         # 4. 点击1930,590（右键）（使用与鱼饵识别相同的缩放逻辑）
-        scaled_x2, scaled_y2 = scale_position(1930, 590, anchor="center", coordinate_type="point")
+        scaled_x2, scaled_y2 = scale_position(
+            1930, 590, anchor="center", coordinate_type="point"
+        )
         mouse_controller.position = (scaled_x2, scaled_y2)
         time.sleep(0.3)
         mouse_controller.click(mouse.Button.right, 1)
         time.sleep(0.3)
-        
+
         # 5. 点击2030,764（左键）（使用与鱼饵识别相同的缩放逻辑）
-        scaled_x3, scaled_y3 = scale_position(2030, 764, anchor="center", coordinate_type="point")
+        scaled_x3, scaled_y3 = scale_position(
+            2030, 764, anchor="center", coordinate_type="point"
+        )
         mouse_controller.position = (scaled_x3, scaled_y3)
         time.sleep(0.3)
         mouse_controller.click(mouse.Button.left, 1)
         time.sleep(0.3)
-        
+
         # 6. 多次按下ESC键，确保退出
         for i in range(1):  # 按下1次ESC键
             keyboard_controller.tap(keyboard.Key.esc)  # 使用tap方法，自动处理按下和释放
             time.sleep(0.5)  # 每次按下后等待
         time.sleep(0.5)
-        
+
         print("✅ [放生] 放生操作执行成功")
         return True
     except Exception as e:
         print(f"❌ [放生] 放生操作执行失败: {e}")
         # 确保C键被释放
-        keyboard_controller.release(keyboard.KeyCode.from_char('c'))
+        keyboard_controller.release(keyboard.KeyCode.from_char("c"))
         return False
 
 
 def should_release_fish(quality):
     """
     根据鱼的品质判断是否需要放生
-    
+
     Args:
         quality: 鱼的品质（标准、非凡、稀有、史诗、传奇）
-        
+
     Returns:
         bool: 是否需要放生
     """
     global release_standard_enabled, release_uncommon_enabled, release_rare_enabled, release_epic_enabled, release_legendary_enabled
-    
+
     # 处理繁体品质名称
-    quality = quality.replace("標準", "标准").replace("傳奇", "传奇").replace("史詩", "史诗")
-    
+    quality = (
+        quality.replace("標準", "标准").replace("傳奇", "传奇").replace("史詩", "史诗")
+    )
+
     if quality == "标准" and release_standard_enabled:
         return True
     elif quality == "非凡" and release_uncommon_enabled:
@@ -4613,7 +4621,7 @@ def should_release_fish(quality):
         return True
     elif quality in ["传奇", "传说"] and release_legendary_enabled:
         return True
-    
+
     return False
 
 
@@ -5666,17 +5674,11 @@ def record_caught_fish():
         print(
             f"🐟 [钓到] {quality_emoji} {fish.name} | 品质: {fish.quality} | 重量: {fish.weight}"
         )
-        
+
         # 鼠标左键收起
         print("🐠 [操作] 执行鼠标左键收起")
         mouse_controller.click(mouse.Button.left, 1)
         time.sleep(0.3)
-        
-        # 放生判断和执行
-        if should_release_fish(fish.quality):
-            print(f"🐠 [放生] 开始放生 {fish.quality}品质的 {fish.name}")
-            release_fish()
-            print(f"🐠 [放生] {fish.quality}品质的 {fish.name} 放生成功")
 
         # 传奇鱼自动截屏
         if legendary_screenshot_enabled and fish.quality in ["传奇", "傳奇"]:
@@ -5766,6 +5768,11 @@ def record_caught_fish():
                         "exception_type": type(e).__name__,
                     }
                     add_debug_info(debug_info)
+        # 放生判断和执行
+        if should_release_fish(fish.quality):
+            print(f"🐠 [放生] 开始放生 {fish.quality}品质的 {fish.name}")
+            release_fish()
+            print(f"🐠 [放生] {fish.quality}品质的 {fish.name} 放生成功")
 
         # 通知GUI更新
         if gui_fish_update_callback:
@@ -6047,18 +6054,18 @@ def handle_fish_bucket_full():
                 screen_width, screen_height = get_current_screen_resolution()
                 click_x = screen_width // 2
                 click_y = screen_height // 2
-                
+
                 # 执行鼠标点击
                 mouse_controller.position = (click_x, click_y)
                 mouse_controller.click(mouse.Button.left, 1)
                 print(f"🖱️  [操作] 已点击屏幕中心: ({click_x}, {click_y})")
-                
+
                 # 等待一段时间，同时检查键盘活动
                 for _ in range(50):  # 5秒 = 50 * 0.1秒
                     if keyboard_activity[0]:
                         break
                     time.sleep(0.1)  # 每0.1秒检查一次键盘活动
-                
+
                 if keyboard_activity[0]:
                     break
 
@@ -6066,7 +6073,11 @@ def handle_fish_bucket_full():
 
             # 停止键盘监听器
             try:
-                if keyboard_listener and hasattr(keyboard_listener, 'is_alive') and keyboard_listener.is_alive():
+                if (
+                    keyboard_listener
+                    and hasattr(keyboard_listener, "is_alive")
+                    and keyboard_listener.is_alive()
+                ):
                     keyboard_listener.stop()
                     keyboard_listener.join(timeout=0.5)  # 等待监听器线程结束
             except Exception as e:
@@ -6139,10 +6150,6 @@ def bucket_full_detection_thread():
             # 计算最近一次完整钓鱼循环的时长
             last_interval = timestamps[-1] - timestamps[-2]
 
-            # 调试信息：偶尔输出循环时长
-            if random.random() < 0.1:  # 10%概率输出，避免日志过多
-                print(f"📊 [检测] 钓鱼循环时长: {last_interval:.2f}秒")
-
             # 【核心判断逻辑】
             # 正常钓鱼循环应该至少包含：
             # - 抛竿动画（0.5秒）
@@ -6173,12 +6180,12 @@ def bucket_full_detection_thread():
                     # 额外验证：检查最近的REQUIRED_SHORT_CYCLES个循环是否都异常短
                     recent_short_cycles = 0
                     check_count = min(REQUIRED_SHORT_CYCLES, len(timestamps) - 1)
-                    
+
                     for i in range(len(timestamps) - check_count, len(timestamps)):
                         interval = timestamps[i] - timestamps[i - 1]
                         if interval < dynamic_threshold:
                             recent_short_cycles += 1
-                    
+
                     # 如果最近的check_count个循环都是短循环，或者记录很少，就判定
                     if recent_short_cycles >= check_count or len(timestamps) <= 5:
                         print(
@@ -7106,17 +7113,23 @@ def uno_recognize_tiao(scr):
     base_y = 1314
     base_width = 284
     base_height = 100
-    
+
     # 使用与鱼饵识别相同的缩放逻辑，UI元素通常锚定在角落
     scaled_x, scaled_y, scaled_width, scaled_height = scale_position(
-        base_x, base_y, base_width, base_height, 
-        anchor="bottom_right", coordinate_type="region"
+        base_x,
+        base_y,
+        base_width,
+        base_height,
+        anchor="bottom_right",
+        coordinate_type="region",
     )
-    
+
     # 捕获缩放后的区域
     region_gray = capture_region(scaled_x, scaled_y, scaled_width, scaled_height, scr)
     if region_gray is None:
-        print(f"❌ [UNO] 区域捕获失败 (缩放后: {scaled_x}, {scaled_y}, {scaled_width}, {scaled_height})")
+        print(
+            f"❌ [UNO] 区域捕获失败 (缩放后: {scaled_x}, {scaled_y}, {scaled_width}, {scaled_height})"
+        )
         return False
 
     # 执行模板匹配
@@ -7182,17 +7195,15 @@ def calculate_click_position():
     # 2K分辨率(2560×1440)下的原始位置
     base_x = 2381
     base_y = 1353
-    
+
     # 获取当前分辨率
     current_width, current_height = get_current_screen_resolution()
-    
+
     # 使用与鱼饵识别相同的缩放逻辑，UI元素通常锚定在角落
     scaled_x, scaled_y = scale_position(
-        base_x, base_y, 
-        anchor="bottom_right", 
-        coordinate_type="point"
+        base_x, base_y, anchor="bottom_right", coordinate_type="point"
     )
-    
+
     print(
         f"🎮 [UNO] 分辨率 {current_width}×{current_height}，缩放比例 X={SCALE_X:.2f}, Y={SCALE_Y:.2f}，点击位置: ({scaled_x}, {scaled_y})"
     )
@@ -7314,10 +7325,10 @@ def uno_start_continuous_recognition():
         # 重置当前牌数为7
         uno_input1_var.set(7)
         print("🎮 [UNO] 当前牌数已重置为7")
-        
+
         # 重置弹窗显示标志位
         uno_popup_shown = False
-        
+
         # 设置识别状态为True
         uno_recognition_running = True
 
@@ -7381,7 +7392,7 @@ def uno_show_popup():
     popup.geometry("300x150")
     popup.resizable(False, False)
     popup.grab_set()  # 模态窗口
-    popup.attributes('-topmost', True)  # 弹窗置顶显示
+    popup.attributes("-topmost", True)  # 弹窗置顶显示
 
     # 设置样式
     popup.configure(background="#2d3748")
