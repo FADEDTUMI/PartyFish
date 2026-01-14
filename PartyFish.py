@@ -4540,9 +4540,6 @@ def release_fish():
     """
     global release_fish_enabled, release_standard_enabled, release_uncommon_enabled, release_rare_enabled, release_epic_enabled, release_legendary_enabled
 
-    if not release_fish_enabled:
-        return False
-
     try:
         # 1. 按住C键
         keyboard_controller.press(keyboard.KeyCode.from_char("c"))
@@ -5769,11 +5766,13 @@ def record_caught_fish():
                     }
                     add_debug_info(debug_info)
         # 放生判断和执行
-        if should_release_fish(fish.quality):
-            print(f"🐠 [放生] 开始放生 {fish.quality}品质的 {fish.name}")
-            release_fish()
-            print(f"🐠 [放生] {fish.quality}品质的 {fish.name} 放生成功")
-
+        if release_fish_enabled:  # 先检查全局开关是否开启
+            if should_release_fish(fish.quality):  # 再检查鱼的稀有度
+                print(f"🐠 [放生] 开始放生 {fish.quality}品质的 {fish.name}")
+                release_fish()
+                print(f"🐠 [放生] {fish.quality}品质的 {fish.name} 放生成功")
+        else:
+            print(f"⏹️ [放生] 放生功能已禁用，跳过放生判断")
         # 通知GUI更新
         if gui_fish_update_callback:
             try:
