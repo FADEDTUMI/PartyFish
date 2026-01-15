@@ -344,6 +344,7 @@ release_uncommon_enabled = False  # 是否放生非凡鱼
 release_rare_enabled = False  # 是否放生稀有鱼
 release_epic_enabled = False  # 是否放生史诗鱼
 release_legendary_enabled = False  # 是否放生传奇鱼
+release_phantom_rare_enabled = False  # 是否放生六幻神稀有鱼
 
 # =========================
 # 字体大小设置
@@ -827,6 +828,7 @@ def save_parameters():
         "release_rare_enabled": release_rare_enabled,
         "release_epic_enabled": release_epic_enabled,
         "release_legendary_enabled": release_legendary_enabled,
+        "release_phantom_rare_enabled": release_phantom_rare_enabled,
     }
 
     try:
@@ -848,7 +850,7 @@ def load_parameters():
     global JITTER_RANGE
     global bait_recognition_algorithm  # 新增加载鱼饵识别算法
     global uno_hotkey_name, uno_hotkey_modifiers, uno_hotkey_main_key  # 添加UNO热键全局变量
-    global release_fish_enabled, release_standard_enabled, release_uncommon_enabled, release_rare_enabled, release_epic_enabled, release_legendary_enabled  # 添加放生功能全局变量
+    global release_fish_enabled, release_standard_enabled, release_uncommon_enabled, release_rare_enabled, release_epic_enabled, release_legendary_enabled, release_phantom_rare_enabled  # 添加放生功能全局变量
     try:
         with open(PARAMETER_FILE, "r", encoding="utf-8") as f:
             params = json.load(f)
@@ -897,6 +899,7 @@ def load_parameters():
         release_rare_enabled = params.get("release_rare_enabled", False)
         release_epic_enabled = params.get("release_epic_enabled", False)
         release_legendary_enabled = params.get("release_legendary_enabled", False)
+        release_phantom_rare_enabled = params.get("release_phantom_rare_enabled", False)
 
         # 加载热键设置（新格式支持组合键）
         saved_hotkey = params.get("hotkey", "F2")
@@ -1105,6 +1108,8 @@ def update_parameters(
                 release_epic_enabled = bool(release_epic_var.get())
             if release_legendary_var is not None:
                 release_legendary_enabled = bool(release_legendary_var.get())
+            if 'release_phantom_rare_var' in locals() and release_phantom_rare_var is not None:
+                release_phantom_rare_enabled = bool(release_phantom_rare_var.get())
 
             # 更新热键设置（新格式支持组合键）
             if hotkey_var is not None:
@@ -3296,6 +3301,16 @@ def create_gui():
     )
     uncommon_cb.pack(side=LEFT, padx=2)
 
+    # 六幻神稀有鱼
+    release_phantom_rare_var = ttkb.BooleanVar(value=release_phantom_rare_enabled)
+    phantom_rare_cb = ttkb.Checkbutton(
+        release_quality_row1,
+        text="🔱 六幻神稀有",
+        variable=release_phantom_rare_var,
+        bootstyle="success",
+    )
+    phantom_rare_cb.pack(side=LEFT, padx=2)
+
     # 第二行：稀有、史诗、传奇
     release_quality_row2 = ttkb.Frame(release_quality_check_frame)
     release_quality_row2.pack(fill=X, pady=1)
@@ -4591,24 +4606,31 @@ def release_fish():
         return False
 
 
-def should_release_fish(quality):
+def should_release_fish(quality, fish_name=""):
     """
-    根据鱼的品质判断是否需要放生
+    根据鱼的品质和名称判断是否需要放生
 
     Args:
         quality: 鱼的品质（标准、非凡、稀有、史诗、传奇）
+        fish_name: 鱼的名称
 
     Returns:
         bool: 是否需要放生
     """
-    global release_standard_enabled, release_uncommon_enabled, release_rare_enabled, release_epic_enabled, release_legendary_enabled
+    global release_standard_enabled, release_uncommon_enabled, release_rare_enabled, release_epic_enabled, release_legendary_enabled, release_phantom_rare_enabled
 
     # 处理繁体品质名称
     quality = (
         quality.replace("標準", "标准").replace("傳奇", "传奇").replace("史詩", "史诗")
     )
 
-    if quality == "标准" and release_standard_enabled:
+    # 六幻神稀有鱼列表
+    phantom_rare_fishes = ["地包天鱼", "黄鸭叫", "辐射鲈", "鬼刀鱼", "鬼虎鱼", "鬼牙鱼"]
+    
+    # 检查是否是六幻神稀有鱼
+    if fish_name in phantom_rare_fishes and release_phantom_rare_enabled:
+        return True
+    elif quality == "标准" and release_standard_enabled:
         return True
     elif quality == "非凡" and release_uncommon_enabled:
         return True
@@ -5767,7 +5789,7 @@ def record_caught_fish():
                     add_debug_info(debug_info)
         # 放生判断和执行
         if release_fish_enabled:  # 先检查全局开关是否开启
-            if should_release_fish(fish.quality):  # 再检查鱼的稀有度
+            if should_release_fish(fish.quality, fish.name):  # 再检查鱼的稀有度
                 print(f"🐠 [放生] 开始放生 {fish.quality}品质的 {fish.name}")
                 release_fish()
                 print(f"🐠 [放生] {fish.quality}品质的 {fish.name} 放生成功")
