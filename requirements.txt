@@ -7,3 +7,5 @@ mss
 rapidocr_onnxruntime
 six
 onnx
+wmi
+psutil
